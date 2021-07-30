@@ -6,17 +6,17 @@ extern FILE *yyin;
 
 void yyerror(const char *s)
 {
-	printf("[YACC] [BISON] error %s\n", s);
+    printf("[YACC] [BISON] error %s\n", s);
 }
 
 int main()
 {
-	yyparse();
+    yyparse();
 }
 %}
 
 %union {
-	char *gName;
+    char *gName;
 };
 
 %token TK_QUOTE_LEFT TK_QUOTE_RIGHT TK_LINK
