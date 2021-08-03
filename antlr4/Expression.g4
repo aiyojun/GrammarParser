@@ -1,5 +1,18 @@
 grammar Expression;
 
+@parser::header {
+import com.jqs.json.Json;
+import com.jqs.frame.Atom;
+}
+
+@parser::members {
+public static Atom piece;
+public static String key;
+public static String op;
+public static String value;
+public static List<Object> stack = new ArrayList<>(128);
+}
+
 WS:             [ \t] -> skip;
 TK_QUOTE_LEFT:  QUO_LEFT;
 TK_QUOTE_RIGHT: QUO_RIGHT;
@@ -32,14 +45,21 @@ OP_LT:      [<];
 OP_LTE:     '<=';
 OPERATOR:   OP_EQ|OP_NEQ|OP_GT|OP_GTE|OP_LT|OP_LTE|KEY_IN|KEY_BETWEEN|KEY_LIKE;
 
-prog: expr OVER;
+prog: expr {stack.add(Expressions.getStageResult(stack));} OVER;
 
-expr: TK_QUOTE_LEFT expr TK_QUOTE_RIGHT
-    | expr TK_LINK expr
-    | exprItem;
+expr: exprWithQuote
+    | expr TK_LINK {stack.add($TK_LINK.text.toLowerCase());} expr
+    | exprItem
+;
+
+exprWithQuote: TK_QUOTE_LEFT {stack.add($TK_QUOTE_LEFT.text);} expr TK_QUOTE_RIGHT {stack.add(Expressions.getStageResult(stack));}
+;
 
 exprItem: atomName atomOp atomValue
-      ;
-atomName:  TK_FIELD;
-atomOp:    TK_OPERATOR;
-atomValue: TK_VALUE;
+;
+atomName:  TK_FIELD {key = $TK_FIELD.text;}
+;
+atomOp:    TK_OPERATOR {op = $TK_OPERATOR.text.toLowerCase();}
+;
+atomValue: TK_VALUE {value = $TK_VALUE.text; stack.add(Expressions.getResult(key, op, value));}
+;
