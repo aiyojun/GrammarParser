@@ -1,18 +1,18 @@
 package com.jpro.ast.filter;
 
-public class Lte implements Filter {
+public class Lte<T> implements Filter {
+    private final String field;
+    private final T value;
+
     public String getField() {
         return field;
     }
 
-    public Object getValue() {
+    public T getValue() {
         return value;
     }
 
-    private String field;
-    private Object value;
-
-    public Lte(String field, Object value) {
+    public Lte(String field, T value) {
         this.field = field;
         this.value = value;
     }

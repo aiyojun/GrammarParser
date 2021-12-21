@@ -1,18 +1,18 @@
 package com.jpro.ast.filter;
 
-public class Ne implements Filter {
+public class Ne<T> implements Filter {
+    private final String field;
+    private final T value;
+
     public String getField() {
         return field;
     }
 
-    public Object getValue() {
+    public T getValue() {
         return value;
     }
 
-    private String field;
-    private Object value;
-
-    public Ne(String field, Object value) {
+    public Ne(String field, T value) {
         this.field = field;
         this.value = value;
     }
@@ -22,3 +22,4 @@ public class Ne implements Filter {
         return "\"" + field + "\":{\"$ne\":" + (value instanceof String ? ("\"" + value + "\"") : value.toString()) + "}";
     }
 }
+

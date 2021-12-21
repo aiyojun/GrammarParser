@@ -1,11 +1,11 @@
 package com.jpro.ast.filter;
 
-public class Gte implements Filter {
-    private String field;
+public class Gte<T> implements Filter {
+    private final String field;
 
-    private Object value;
+    private final T value;
 
-    public Gte(String field, Object value) {
+    public Gte(String field, T value) {
         this.field = field;
         this.value = value;
     }
@@ -14,7 +14,7 @@ public class Gte implements Filter {
         return field;
     }
 
-    public Object getValue() {
+    public T getValue() {
         return value;
     }
 

@@ -4,36 +4,36 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class And implements Filter {
-    private List<Filter> conditions = new ArrayList<>(10);
+    private List<Filter> Filters = new ArrayList<>(10);
 
     public And() {
 
     }
 
-    public And(List<Filter> conditions) {
-        this.conditions.addAll(conditions);
+    public And(List<Filter> Filters) {
+        this.Filters.addAll(Filters);
         this.unfold();
     }
 
 
-    public List<Filter> getConditions() {
-        return conditions;
+    public List<Filter> getFilters() {
+        return Filters;
     }
 
-    public void add(Filter condition) {
-        if (condition instanceof And) {
-            And other = (And) condition;
-            conditions.addAll(other.conditions);
+    public void add(Filter Filter) {
+        if (Filter instanceof And) {
+            And other = (And) Filter;
+            Filters.addAll(other.Filters);
         } else {
-            conditions.add(condition);
+            Filters.add(Filter);
         }
     }
 
     private int nestedAndSize() {
         int size = 0;
-        for (Filter atom : conditions) {
+        for (Filter atom : Filters) {
             if (atom instanceof And) {
-                size = ((And) atom).conditions.size();
+                size = ((And) atom).Filters.size();
                 break;
             }
         }
@@ -44,15 +44,15 @@ public class And implements Filter {
         int len;
         while ((len = nestedAndSize()) > 0) {
             List<Filter> replace = new ArrayList<>(
-                    conditions.size() + len - 1);
-            for (Filter atom : conditions) {
+                    Filters.size() + len - 1);
+            for (Filter atom : Filters) {
                 if (atom instanceof And) {
-                    replace.addAll(((And) atom).conditions);
+                    replace.addAll(((And) atom).Filters);
                 } else {
                     replace.add(atom);
                 }
             }
-            conditions = replace;
+            Filters = replace;
         }
     }
 
@@ -60,9 +60,9 @@ public class And implements Filter {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         int index = 0;
-        for (Filter condition : conditions) {
-            builder.append(condition);
-            if (index != conditions.size() - 1) {
+        for (Filter Filter : Filters) {
+            builder.append(Filter);
+            if (index != Filters.size() - 1) {
                 builder.append(",");
             }
             index++;

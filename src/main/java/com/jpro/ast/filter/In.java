@@ -1,13 +1,14 @@
 package com.jpro.ast.filter;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class In implements Filter {
-    private String field;
-    private List<Object> values;
+public class In<T> implements Filter, Iterable<T> {
+    private final String field;
+    private final List<T> values;
 
-    public In(String field, List<Object> values) {
+    public In(String field, List<T> values) {
         this.field = field;
         this.values = values;
     }
@@ -16,7 +17,7 @@ public class In implements Filter {
         return field;
     }
 
-    public List<Object> getValues() {
+    public List<T> getValues() {
         return values;
     }
 
@@ -27,5 +28,10 @@ public class In implements Filter {
                 .map(o -> (o instanceof String ? ("\"" + o + "\"") : o.toString()))
                 .collect(Collectors.joining(","))
                 + "]}";
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+        return values.iterator();
     }
 }

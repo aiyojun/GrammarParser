@@ -4,30 +4,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Or implements Filter {
-    private List<Filter> conditions = new ArrayList<>(10);
+    private List<Filter> Filters = new ArrayList<>(10);
 
     public Or() {
 
     }
 
-    public Or(List<Filter> conditions) {
-        this.conditions.addAll(conditions);
+    public Or(List<Filter> Filters) {
+        this.Filters.addAll(Filters);
         this.unfold();
     }
 
-    public List<Filter> getConditions() {
-        return conditions;
+    public List<Filter> getFilters() {
+        return Filters;
     }
 
-    public void add(Filter condition) {
-        conditions.add(condition);
+    public void add(Filter Filter) {
+        Filters.add(Filter);
     }
 
     private int nestedOrSize() {
         int size = 0;
-        for (Filter atom : conditions) {
+        for (Filter atom : Filters) {
             if (atom instanceof Or) {
-                size = ((Or) atom).conditions.size();
+                size = ((Or) atom).Filters.size();
                 break;
             }
         }
@@ -38,15 +38,15 @@ public class Or implements Filter {
         int len;
         while ((len = nestedOrSize()) > 0) {
             List<Filter> replace = new ArrayList<>(
-                    conditions.size() + len - 1);
-            for (Filter atom : conditions) {
+                    Filters.size() + len - 1);
+            for (Filter atom : Filters) {
                 if (atom instanceof Or) {
-                    replace.addAll(((Or) atom).conditions);
+                    replace.addAll(((Or) atom).Filters);
                 } else {
                     replace.add(atom);
                 }
             }
-            conditions = replace;
+            Filters = replace;
         }
     }
 
@@ -54,11 +54,11 @@ public class Or implements Filter {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         int index = 0;
-        for (Filter condition : conditions) {
+        for (Filter Filter : Filters) {
             builder.append("{");
-            builder.append(condition);
+            builder.append(Filter);
             builder.append("}");
-            if (index != conditions.size() - 1) {
+            if (index != Filters.size() - 1) {
                 builder.append(",");
             }
             index++;
@@ -66,3 +66,4 @@ public class Or implements Filter {
         return "\"$or\":[" + builder + "]";
     }
 }
+

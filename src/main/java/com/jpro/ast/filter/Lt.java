@@ -1,11 +1,11 @@
 package com.jpro.ast.filter;
 
-public class Lt implements Filter {
-    private String field;
+public class Lt<T> implements Filter {
+    private final String field;
 
-    private Object value;
+    private final T value;
 
-    public Lt(String field, Object value) {
+    public Lt(String field, T value) {
         this.field = field;
         this.value = value;
     }
@@ -14,7 +14,7 @@ public class Lt implements Filter {
         return field;
     }
 
-    public Object getValue() {
+    public T getValue() {
         return value;
     }
 

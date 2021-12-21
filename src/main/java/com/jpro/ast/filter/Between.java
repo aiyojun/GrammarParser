@@ -1,23 +1,23 @@
 package com.jpro.ast.filter;
 
-public class Between implements Filter {
+public class Between<T> implements Filter {
+    private final String field;
+    private final T minValue;
+    private final T maxValue;
+
     public String getField() {
         return field;
     }
 
-    public Object getMinValue() {
+    public T getMinValue() {
         return minValue;
     }
 
-    public Object getMaxValue() {
+    public T getMaxValue() {
         return maxValue;
     }
 
-    private String field;
-    private Object minValue;
-    private Object maxValue;
-
-    public Between(String field, Object min, Object max) {
+    public Between(String field, T min, T max) {
         this.field = field;
         this.minValue = min;
         this.maxValue = max;

@@ -1,19 +1,19 @@
 package com.jpro.ast.filter;
 
-public class Eq implements Filter {
-    private String field;
+public class Eq<T> implements Filter {
+    private final String field;
 
-    private Object value;
+    private final T value;
 
     public String getField() {
         return field;
     }
 
-    public Object getValue() {
+    public T getValue() {
         return value;
     }
 
-    public Eq(String field, Object value) {
+    public Eq(String field, T value) {
         this.field = field;
         this.value = value;
     }
@@ -25,3 +25,4 @@ public class Eq implements Filter {
                 + "}";
     }
 }
+
