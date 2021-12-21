@@ -22,3 +22,29 @@ make
 ./expr     # run the 'expr' parser
 make clean # remove build files
 ```
+
+## Java SQL parser
+
+- Convert SQL-Where to Filter;
+- Convert Filter to SQL;
+- Convert Filter to MongoDB(Document).
+
+```java
+public class FilterDemo {
+    @Test
+    public void parseSQL() {
+        SQLParser parser = new SQLParser();
+        try {
+            String sql = "a>12 and (b < 'haha' or c between 34 and 43 and d > '2020-01-01 08:00:00' or e in (1,2,3));";
+            Filter filter = parser.parseWhere(sql);
+            String sql_ = SQLDecoder.decode(filter);
+            Document document = MongoDecoder.decode(filter);
+            System.out.println(sql);
+            System.out.println(sql_);
+            System.out.println(document.toJson());
+        } catch (GrammarError e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
