@@ -146,7 +146,10 @@ class TreeNode {
     // @ts-ignore
     private _optionConcat: Map<string, Array<string>> | null = null;
     private _isRecursion: boolean = false;
-
+    /**
+     * Chain invoking to set inner value.
+     * Nice interface!
+     */
     setUid(u: number): TreeNode {this._uid = u;return this;}
     setParent(p: TreeNode): TreeNode {this._parent = p; return this;}
     addChild(c: TreeNode): TreeNode {this._child.push(c); return this;}
@@ -159,7 +162,9 @@ class TreeNode {
     // @ts-ignore
     setOptionConcat(c: Map<string, Array<string>>): TreeNode {this._optionConcat = c; return this;}
     setRecursion(r: boolean): TreeNode {this._isRecursion = r; return this;}
-
+    /**
+     * Pack inner variables by providing getter methods.
+     */
     getUid(): number {return this._uid;}
     getParent(): TreeNode | null {return this._parent;}
     getChildren(): Array<TreeNode> {return this._child;}
@@ -313,7 +318,9 @@ class ParserTree {
             node.getChildren().forEach(chi => this.printTree(chi));
         }
     }
-
+    /**
+     * Tree walker.
+     */
     private buildTree(factory: TreeNodeFactory, treeNode: TreeNode, token: Token): void {
         if (treeNode.getChildSize() === 0) {
             if (treeNode.getTemplate() === null || treeNode.getTemplate().length === 0) {
@@ -474,6 +481,3 @@ class Grammar {
 // ******************** OVER ***********************
 // ******************** OVER ***********************
 ////////////////////////////////////////////////////
-
-
-
