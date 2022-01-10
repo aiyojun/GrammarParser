@@ -532,7 +532,8 @@ class Grammar {
 //     TreeNodeFactory,
 //     ParserTree,
 //     GrammarItem,
-//     Grammar
+//     Grammar,
+//     Walker
 // };
 ////////////////////////////////////////////////////
 // ******************** OVER ***********************
