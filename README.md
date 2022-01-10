@@ -14,9 +14,14 @@ For example:
 age < 42 and (name != "simon" or work = 'writer')
 ```
 
-## Typescript(full support)
+## Typescript(Full support)
 
 In 'browser' directory.
+
+```sql
+show xxx when a = 12 and (b != 9 and c < 74)
+
+```
 
 <img src="browser/parser.png">
 
