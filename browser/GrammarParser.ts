@@ -179,6 +179,22 @@ class TreeNode {
     getOptionConcat(): Map<string, Array<string>> | null {return this._optionConcat;}
     isRecursion(): boolean {return this._isRecursion;}
 }
+class Walker {
+    private _obj: Object;
+
+    listen(obj: Object): Walker {
+        this._obj = obj;
+        return this;
+    }
+
+    walk(type: string, node: TreeNode, enter: boolean = true) {
+        if (enter && this._obj.hasOwnProperty("enter_" + type) && (this._obj["enter_" + type] instanceof Function)) {
+            this._obj["enter_" + type](node);
+        } else if (!enter && this._obj.hasOwnProperty("exit_" + type) && (this._obj["exit_" + type] instanceof Function)) {
+            this._obj["exit_" + type](node);
+        }
+    }
+}
 ////////////////////////////////////////////////////
 // ***** 4. Grammar item definition ****************
 ////////////////////////////////////////////////////
@@ -274,10 +290,16 @@ class ParserTree {
     /** local record */
     private ptr: TreeNode;
     private factory: TreeNodeFactory = new TreeNodeFactory();
+    private walker: Walker = new Walker();
 
     // @ts-ignore
     rule(signature: string, handle: Map<string, Array<string>>, recursion: Array<string> | null = null): void {
         this.factory.rule(signature, handle, recursion);
+    }
+
+    listen(o: Object): ParserTree {
+        this.walker.listen(o);
+        return this;
     }
 
     parse(s: string, grammarStart: string, lexer: Lexer): void {
@@ -306,6 +328,29 @@ class ParserTree {
         return this.root;
     }
 
+    private getTreeJsonInner(node: TreeNode): Object {
+        let text: string;
+        if (this.factory.isLeaf(node.getType())) {
+            text = node.getType() + ":\"" + node.getText() + "\"";
+        } else {
+            text = node.getType();
+        }
+        let r: Object = {};
+        r["name"] = text;
+        if (node.getChildSize() !== 0) {
+            let children: Array<Object> = [];
+            for (let i = 0; i < node.getChildSize(); i++) {
+                children.push(this.getTreeJsonInner(node.getChild(i)));
+            }
+            r["children"] = children;
+        }
+        return r;
+    }
+
+    getTreeJson(): Object {
+        return this.getTreeJsonInner(this.root);
+    }
+
     printTree(node: TreeNode) {
         if (node.getParent() !== null) {
             console.info(node.getText()
@@ -318,6 +363,20 @@ class ParserTree {
             node.getChildren().forEach(chi => this.printTree(chi));
         }
     }
+
+    walkTree(node: TreeNode) {
+        if (this.factory.isLeaf(node.getType())) return;
+        // TODO: enter
+        this.walker.walk(node.getType(), node);
+        if (node.getChildSize() !== 0) {
+            for (let i = 0; i < node.getChildSize(); i++) {
+                this.walkTree(node.getChild(i));
+            }
+        }
+        this.walker.walk(node.getType(), node, false);
+        // TODO: exit
+    }
+
     /**
      * Tree walker.
      */
@@ -336,6 +395,7 @@ class ParserTree {
             }
         } else if (treeNode.getChildSize() === treeNode.getTemplate().length) {
             if (!treeNode.isRecursion()) {
+                // this.walker.walk(treeNode.getType(), treeNode, false);
                 if (treeNode === this.root) {
                     return;
                 }
@@ -410,51 +470,51 @@ class Grammar {
             .replace("\t", "")
             .split(";").filter(line => line != "")
             .forEach(line => {
-            let split_0: Array<string> = line.replace("\n", "").split(":").filter(word => word != "")
-            if (split_0.length != 2) {
-                throw new GrammarError("grammar string error");
-            }
-            let signature = split_0[0].replace(" ", "");
-            let items: Array<string> = split_0[1].split("|");
-            // @ts-ignore
-            let m: Map<string, Array<string>> = new Map<string, Array<string>>();
-            let isRecursion: boolean = false;
-            let recursionItems: Array<string> | null = null;
-                let count: number = 0;
-            for (let index in items) {
-                let s = items[index];
-                let words: Array<string> = s.split(" ").filter(word => word != "");
-                if (words.length === 0) {
-                    throw new GrammarError("grammar rule error");
+                let split_0: Array<string> = line.replace("\n", "").split(":").filter(word => word != "")
+                if (split_0.length != 2) {
+                    throw new GrammarError("grammar string error");
                 }
-                if (words.indexOf(signature) != -1) {
-                    isRecursion = true;
-                    if (words[0] !== signature) {
-                        throw new GrammarError("grammar recursion rule error: not left recursion!");
-                    }
-                    words = words.slice(1);
+                let signature = split_0[0].replace(" ", "");
+                let items: Array<string> = split_0[1].split("|");
+                // @ts-ignore
+                let m: Map<string, Array<string>> = new Map<string, Array<string>>();
+                let isRecursion: boolean = false;
+                let recursionItems: Array<string> | null = null;
+                    let count: number = 0;
+                for (let index in items) {
+                    let s = items[index];
+                    let words: Array<string> = s.split(" ").filter(word => word != "");
                     if (words.length === 0) {
-                        throw new GrammarError("grammar recursion rule error: invalid self recursion!");
+                        throw new GrammarError("grammar rule error");
                     }
                     if (words.indexOf(signature) != -1) {
-                        throw new GrammarError("grammar recursion rule error: only one recursion item allowed!");
+                        isRecursion = true;
+                        if (words[0] !== signature) {
+                            throw new GrammarError("grammar recursion rule error: not left recursion!");
+                        }
+                        words = words.slice(1);
+                        if (words.length === 0) {
+                            throw new GrammarError("grammar recursion rule error: invalid self recursion!");
+                        }
+                        if (words.indexOf(signature) != -1) {
+                            throw new GrammarError("grammar recursion rule error: only one recursion item allowed!");
+                        }
+                    } else {
+                        count++;
+                        recursionItems = words;
                     }
-                } else {
-                    count++;
-                    recursionItems = words;
+                    m.set(words[0], words);
                 }
-                m.set(words[0], words);
-            }
-            if (isRecursion && (count > 1 || count == 0)) {
-                throw new GrammarError("grammar recursion rule error: only one recursion item(must) allowed! number: "
-                    + count);
-            }
-            if (isRecursion) {
-                m.delete(recursionItems[0]);
-                parserTree.rule(signature, m, recursionItems);
-            } else {
-                parserTree.rule(signature, m);
-            }
+                if (isRecursion && (count > 1 || count == 0)) {
+                    throw new GrammarError("grammar recursion rule error: only one recursion item(must) allowed! number: "
+                        + count);
+                }
+                if (isRecursion) {
+                    m.delete(recursionItems[0]);
+                    parserTree.rule(signature, m, recursionItems);
+                } else {
+                    parserTree.rule(signature, m);
+                }
         });
         return parserTree;
     }
