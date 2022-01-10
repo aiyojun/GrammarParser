@@ -14,7 +14,14 @@ For example:
 age < 42 and (name != "simon" or work = 'writer')
 ```
 
-## Build
+## Typescript(full support)
+
+In 'browser' directory.
+
+<img src="browser/parser.png">
+
+
+## Build c/cpp demo(based on lex&&yacc)
 
 ```bash
 cd GrammarParser
