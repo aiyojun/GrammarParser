@@ -364,19 +364,6 @@ class ParserTree {
         return this.getTreeJsonInner(this.root);
     }
 
-    printTree(node: TreeNode) {
-        if (node.getParent() !== null) {
-            console.info(node.getText()
-                + "[" + node.getUid() + ":" + node.getParent().getUid()
-                + "#" + node.getType() +"]");
-        } else {
-            console.info(node.getText() + "[" + node.getUid()+ "#" + node.getType() +"]");
-        }
-        if (node.getChildSize() > 0) {
-            node.getChildren().forEach(chi => this.printTree(chi));
-        }
-    }
-
     walkTree(node: TreeNode) {
         if (this.factory.isLeaf(node.getType())) return;
         // TODO: enter

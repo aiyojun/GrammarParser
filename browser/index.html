@@ -34,9 +34,6 @@
                 console.error(e);
             }
             console.info(">> isOver: " + tree.isOver());
-            // console.info(">> build tree ...");
-            // console.info(">> print tree :");
-            // tree.printTree(tree.getTree());
             let data = tree.getTreeJson();
             drawTree(data);
             tree.listen({
