@@ -12,11 +12,11 @@ build_dir:
 
 lex:
 	@echo "[1/3] Compiling lex file"
-	@$(LEX) -o build/$(TARGET).lex.c src/$(TARGET).l
+	@$(LEX) -o build/$(TARGET).lex.c $(TARGET).l
 
 yacc:
 	@echo "[2/3] Compiling yacc file"
-	@$(YACC) -d -o build/$(TARGET).yacc.c src/$(TARGET).y
+	@$(YACC) -d -o build/$(TARGET).yacc.c $(TARGET).y
 
 clean:
 	@rm -rf build $(TARGET)
