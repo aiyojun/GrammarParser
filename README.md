@@ -14,7 +14,7 @@ This project has three parts:
 
 The module of antlr for java provides methods to convert SQL-Where strings to parser-tree(AST). Then you can transform AST to other kinds of DSL, and i provided a way of AST-to-Mongodb converting in project.
 
-If you are interested in grammar parsing, you can spend sometimes in reading the project. I hope some of my code is useful for you. And if you have any questions, it's welcome to tell me.
+If you are interested in grammar parsing, you can spend sometime in reading the project. I hope some of my code is useful for you. And if you have any questions, it's welcome to tell me.
 
 ## Typescript(browser)
 
