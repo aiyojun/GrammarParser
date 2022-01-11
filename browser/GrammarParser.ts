@@ -115,14 +115,26 @@ class Lexer {
             return tokens[0]
         }
         if (tokens.length > 1) {
+            let longest = {
+                idx: 0,
+                len: tokens[0].text.length
+            };
+            // @ts-ignore
+            let same: Map<string, Array<number>> = new Map<string, Array<number>>();
             for (let i = 1; i < tokens.length; i++) {
-                if (tokens[i].text === tokens[0].text) {
-                    this._stringStream = this._stringStream.substr(tokens[i].text.length)
-                    return tokens[i]
+                if (tokens[i].text.length > longest.len) {
+                    longest.idx = i;
+                    longest.len = tokens[i].text.length;
+                }
+                if (same.has(tokens[i].text)) {
+                    same.get(tokens[i].text).push(i);
+                } else {
+                    same.set(tokens[i].text, [i]);
                 }
             }
-            this._stringStream = this._stringStream.substr(tokens[0].text.length)
-            return tokens[0]
+            let idx = same.get(tokens[longest.idx].text).pop();
+            this._stringStream = this._stringStream.substr(tokens[idx].text.length);
+            return tokens[idx];
         }
         throw new LexerError("Unexpected token: \""
             + this._stringStream.substr(0, 10) + "\"")
@@ -257,6 +269,7 @@ class TreeNodeFactory {
         if (!this.grammar.has(type)) {
             throw new GrammarError("unknown type " + type);
         }
+        console.debug("Build node: " + type + "; recursion: " + this.recursionSignature.has(type));
         if (this.recursionSignature.has(type)) {
             /** Many limitation here! Maybe more code need here! */
             r.setRecursion(true)
@@ -388,14 +401,14 @@ class ParserTree {
                     for (let e in treeNode.getOptions().keys()) {
                         exp.push(e);
                     }
+                    console.error("Node: " + treeNode.getType());
                     throw new GrammarError("Unexpected: " + token.text + "(" + token.type +
-                        "); expect: " + this.errorExpected.concat(exp).join(","));
+                        "); expect: " + this.errorExpected.concat(exp).join(",") + ".");
                 }
                 treeNode.setTemplate(treeNode.getOptions().get(token.type));
             }
         } else if (treeNode.getChildSize() === treeNode.getTemplate().length) {
             if (!treeNode.isRecursion()) {
-                // this.walker.walk(treeNode.getType(), treeNode, false);
                 if (treeNode === this.root) {
                     return;
                 }
