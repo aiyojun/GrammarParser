@@ -19,7 +19,7 @@ age < 42 and (name != "simon" or work = 'writer')
 In 'browser' directory.
 
 ```sql
-show xxx when a = 12 and (b != 9 and c < 74)
+show xxx when a = 12 and (b != -9.09 or c < -74) or (d = 43.00 and e != "hello \"oh")
 
 ```
 
