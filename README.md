@@ -51,6 +51,8 @@ SQL-Where like this:
 age < 42 and (name != "simon" or work = 'writer')
 ```
 
+<img src="antlr4/java/where.png">
+
 Unit test:
 
 ```java
