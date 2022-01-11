@@ -4,13 +4,13 @@ A project of researching various grammar parser, including lex&amp;yacc(flex&amp
 
 ## Summary
 
-As a backend developer, maybe you have written many kinds of parsers to parse many things, like SQL, DSL. This project was recorded many parsers i wrote at past. One of the most popular solutions is lex&amp;yacc. Maybe you were used to use it, if you are a c/cpp developer. And Antlr is another good grammar parser, which can be used with many languages. However, all of them require you provide grammar files. After writing grammar files, you can compile them into codes.
+As a backend developer, maybe you have written many kinds of parsers to parse many things, like SQL, DSL. This project was recorded many parsers i wrote at past. One of the most popular solutions is lex&amp;yacc. Maybe you were custom to use it, if you are a c/cpp developer. And Antlr is another good grammar parser, which can be used with many languages. However, both of them require you provide grammar files. After writing grammar files, you can compile them into codes.
 
 This project has three parts:
 
 - An antlr project for java to parse SQL-Where.
 - A makefile project using lex&amp;yacc to parse AND/OR expression.
-- A custom lightweight typescript project to help various grammar in browser.
+- A custom lightweight typescript project to help various grammar parsing in browser.
 
 The module of antlr for java provides methods to convert SQL-Where strings to parser-tree(AST). Then you can transform AST to other kinds of DSL, and i provided a way of AST-to-Mongodb converting in project.
 
