@@ -458,7 +458,6 @@ class Grammar {
                 throw new LexerError("lexer rule error! invalid rule: " + line);
             }
             let regexp = eval("/" + r_reg + "/");
-            // console.info("[Token] " + signature + ": " + regexp);
             r_lexer.rule(signature, regexp);
         });
         return r_lexer;
