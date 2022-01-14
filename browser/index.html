@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="https://cdn.staticfile.org/echarts/5.2.2/echarts.min.js"></script>
-    <script src="GrammarParser.js"></script>
+    <script src="jparse.js"></script>
     <title>GrammarParser</title>
 </head>
 <body>
@@ -28,6 +28,7 @@
                 "atom: LP expr RP | FIELD OP VALUE;";
             let lexer   = Grammar.lexer(words);
             let tree    = Grammar.parser(grammar);
+            tree.printGrammar();
             try {
                 tree.parse(str, "start", lexer);
             } catch (e) {

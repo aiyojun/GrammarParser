@@ -153,7 +153,7 @@ class TreeNode {
     private _type: string = "";
     private _template: Array<string> = [];
     /** helper */
-    // @ts-ignore
+        // @ts-ignore
     private _options: Map<string, Array<string>> | null = null;
     // @ts-ignore
     private _optionConcat: Map<string, Array<string>> | null = null;
@@ -479,7 +479,7 @@ class Grammar {
                 let m: Map<string, Array<string>> = new Map<string, Array<string>>();
                 let isRecursion: boolean = false;
                 let recursionItems: Array<string> | null = null;
-                    let count: number = 0;
+                let count: number = 0;
                 for (let index in items) {
                     let s = items[index];
                     let words: Array<string> = s.split(" ").filter(word => word != "");
@@ -514,7 +514,7 @@ class Grammar {
                 } else {
                     parserTree.rule(signature, m);
                 }
-        });
+            });
         return parserTree;
     }
 }
