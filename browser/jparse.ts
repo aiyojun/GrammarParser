@@ -1,88 +1,85 @@
 /*
- * Copyright (c) 2022, aiyojun. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES.
+ * Copyright (c) 2022, aiyojun. All rights reserved. DO NOT ALTER OR REMOVE COPYRIGHT NOTICES.
  *
- * This code is free software; At current stage, you
- * can use it freely, without any risks.
+ * This code is free software; At current stage, you can use it freely, without any risks.
  */
 
 /**
- * GrammarParser is a grammar parsing tool writen by
- * typescript(This file). You can define lexer and
- * parser by yourself, and the way to create grammar
- * rules is very easy and convinient.
+ * GrammarParser is a grammar parsing tool writen by typescript(This file). You can define lexer and
+ * parser by yourself, and the way to create grammar rules is very easy and convinient.
  *
  * @author: aiyojun
- * If you have any question about this file, you can
- * send mail to me. My email: 1608450902@qq.com
+ * If you have any question about this file, you can send mail to me. My email: 1608450902@qq.com
  *
  * This file mainly include four parts:
- *     1. lexer       2. parser
- *     3. tree node   4. grammar parser
+ *     1. lexer       2. parser     3. tree node   4. grammar parser
  */
-////////////////////////////////////////////////////
-// ***** 1. Exception definition *******************
-////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ************************************* 1. Exception definition **********************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * The {@code LexerError} will be thrown in token
- * lexing stage, if any problem occur.
+ * The {@code LexerError} will be thrown in token lexing stage, if any problem occur.
  */
-class LexerError extends Error {
-    constructor(message?: string) {
-        super(message);
-    }
-}
+class LexerError extends Error {constructor(message?: string) {super(message);}}
 /**
- * The {@code GrammarError} will be thrown in AST
- * tree building stage, if any problem occur.
+ * The {@code GrammarError} will be thrown in AST tree building stage, if any problem occur.
  */
-class GrammarError extends Error {
-    constructor(message?: string) {
-        super(message);
-    }
-}
-////////////////////////////////////////////////////
-// ***** 2. Lexer and related tools definition *****
-////////////////////////////////////////////////////
+class GrammarError extends Error {constructor(message?: string) {super(message);}}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// **************************** 2. Lexer and related tools definition *****************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
 /**
- * The {@code Token} is output after passing lexer.
- * And now, i use the common method(type: string)
- * to represent inner grammar signature. Maybe enum
- * is better.
+ * The {@code Token} is output after passing lexer. And now, i use the common method(type: string)
+ * to represent inner grammar signature. Maybe enum is better.
  */
 class Token {
-    text: string;
-    type: string;
+    private readonly _text: string;
+    private readonly _type: string;
     /**
-     * @param s raw token string
-     * @param t token type, defined by yourself.
+     * @param text raw token string
+     * @param type token type, defined by yourself.
      *          like: FIELD, KEYWORD
      */
-    constructor(s: string, t: string) {
-        this.text = t;
-        this.type = s;
+    static build(type: string, text: string) {
+        return new Token(type, text);
     }
+
+    private constructor(type: string, text: string) {
+        this._text = text;
+        this._type = type;
+    }
+
+    getText(): string {return this._text;}
+    getType(): string {return this._type;}
 }
 
 /**
- * Lexer rule definition. Using regex to create
- * Lexer rules!
+ * Lexer rule definition. Using regex to create Lexer rules!
  */
 class RegRule {
-    reg: RegExp;
-    uid: number;
-    suid: string;
-    constructor(u: number, s: string, r: RegExp) {
-        this.uid = u;
-        this.suid = s;
-        this.uid = u;
-        this.reg = r;
+    private static uidGen = 0;
+
+    private readonly _reg : RegExp;
+    private readonly _uid : number;
+    private readonly _type: string;
+
+    static build(type: string, re: RegExp): RegRule {
+        return new RegRule(type, re);
     }
+
+    private constructor(type: string, re: RegExp) {
+        this._uid = RegRule.uidGen++;
+        this._reg = re;
+        this._type = type;
+    }
+
+    getReg() : RegExp {return this._reg;}
+    getUid() : number {return this._uid;}
+    getType(): string {return this._type;}
 }
 /**
- * The {@code Lexer} is a important part of
- * GrammarParser.
+ * The {@code Lexer} is a important part of GrammarParser.
  */
 class Lexer {
     private _stringStream: string
@@ -91,59 +88,59 @@ class Lexer {
     set(s: string) {this._stringStream = s}
 
     rule(tokenName: string, regex: RegExp): Lexer {
-        this._rules.push(new RegRule(this._rules.length, tokenName, regex));
+        this._rules.push(RegRule.build(tokenName, regex));
         return this;
     }
 
     lex(): Token {
         if (this._stringStream.length === 0)
-            return new Token("EOF", "");
+            return Token.build("EOF", "");
         let tokens: Array<Token> = []
         for (let i: number = 0; i < this._rules.length; i++) {
-            let r: Array<string> = this._stringStream.match(this._rules[i].reg)
+            let r: Array<string> = this._stringStream.match(this._rules[i].getReg())
             if (r !== null) {
-                tokens.push(new Token(this._rules[i].suid, r[0]))
+                tokens.push(Token.build(this._rules[i].getType(), r[0]))
             }
         }
         for (let index in tokens) {
-            if (tokens[index].type === "skip") {
-                this._stringStream = this._stringStream.substr(tokens[index].text.length)
+            if (tokens[index].getType() === "skip") {
+                this._stringStream = this._stringStream.substr(tokens[index].getText().length)
                 return this.lex();
             }
         }
         if (tokens.length == 1) {
-            this._stringStream = this._stringStream.substr(tokens[0].text.length)
+            this._stringStream = this._stringStream.substr(tokens[0].getText().length)
             return tokens[0]
         }
         if (tokens.length > 1) {
             let longest = {
                 idx: 0,
-                len: tokens[0].text.length
+                len: tokens[0].getText().length
             };
             // @ts-ignore
             let same: Map<string, Array<number>> = new Map<string, Array<number>>();
             for (let i = 1; i < tokens.length; i++) {
-                if (tokens[i].text.length > longest.len) {
+                if (tokens[i].getText().length > longest.len) {
                     longest.idx = i;
-                    longest.len = tokens[i].text.length;
+                    longest.len = tokens[i].getText().length;
                 }
-                if (same.has(tokens[i].text)) {
-                    same.get(tokens[i].text).push(i);
+                if (same.has(tokens[i].getText())) {
+                    same.get(tokens[i].getText()).push(i);
                 } else {
-                    same.set(tokens[i].text, [i]);
+                    same.set(tokens[i].getText(), [i]);
                 }
             }
-            let idx = same.get(tokens[longest.idx].text).pop();
-            this._stringStream = this._stringStream.substr(tokens[idx].text.length);
+            let idx = same.get(tokens[longest.idx].getText()).pop();
+            this._stringStream = this._stringStream.substr(tokens[idx].getText().length);
             return tokens[idx];
         }
         throw new LexerError("Unexpected token: \""
             + this._stringStream.substr(0, 10) + "\"")
     }
 }
-////////////////////////////////////////////////////
-// ***** 3. Core data structure: TreeNode **********
-////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ****************************** 3. Core data structure: TreeNode ********************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
 class TreeNode {
     /** core data structure */
     private _uid: number = 0;
@@ -154,13 +151,6 @@ class TreeNode {
     private _type: string = "";
     private _template: Array<string> = [];
     private _law: Law;
-    // accepted: Array<string> = [];
-    /** helper */
-    // @ts-ignore
-    // private _options: Map<string, Array<string>> | null = null;
-    // @ts-ignore
-    // private _optionConcat: Map<string, Array<string>> | null = null;
-    // private _isRecursion: boolean = false;
     /**
      * Chain invoking to set inner value.
      * Nice interface!
@@ -173,11 +163,6 @@ class TreeNode {
     setType(t: string): TreeNode {this._type = t; return this;}
     setLaw(law: Law): TreeNode {this._law = law; return this;}
     setTemplate(t: Array<string>): TreeNode {this._template = t; return this;}
-    // @ts-ignore
-    // setOptions(o: Map<string, Array<string>>): TreeNode {this._options = o; return this;}
-    // @ts-ignore
-    // setOptionConcat(c: Map<string, Array<string>>): TreeNode {this._optionConcat = c; return this;}
-    // setRecursion(r: boolean): TreeNode {this._isRecursion = r; return this;}
     /**
      * Pack inner variables by providing getter methods.
      */
@@ -190,11 +175,6 @@ class TreeNode {
     getType(): string {return this._type;}
     getLaw(): Law {return this._law;}
     getTemplate(): Array<string> {return this._template;}
-    // @ts-ignore
-    // getOptions(): Map<string, Array<string>> | null {return this._options;}
-    // @ts-ignore
-    // getOptionConcat(): Map<string, Array<string>> | null {return this._optionConcat;}
-    // isRecursion(): boolean {return this._isRecursion;}
 }
 
 class Walker {
@@ -206,16 +186,18 @@ class Walker {
     }
 
     walk(type: string, node: TreeNode, enter: boolean = true) {
-        if (enter && this._obj.hasOwnProperty("enter_" + type) && (this._obj["enter_" + type] instanceof Function)) {
+        if (enter && this._obj.hasOwnProperty("enter_" + type)
+            && (this._obj["enter_" + type] instanceof Function)) {
             this._obj["enter_" + type](node);
-        } else if (!enter && this._obj.hasOwnProperty("exit_" + type) && (this._obj["exit_" + type] instanceof Function)) {
+        } else if (!enter && this._obj.hasOwnProperty("exit_" + type)
+            && (this._obj["exit_" + type] instanceof Function)) {
             this._obj["exit_" + type](node);
         }
     }
 }
-////////////////////////////////////////////////////
-// ***** 4. Grammar item definition ****************
-////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ********************************* 4. Grammar item definition ***********************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
 class Law {
     private static uidGen: number = 0;
     private parser: Parser;
@@ -253,7 +235,8 @@ class Law {
             //     throw new GrammarError("left recursion support only");
             // }
             if (items.length === 1 && indexSeq.length === 1) {
-                throw new GrammarError("invalid grammar, " + signature + ": " + signature + ";");
+                throw new GrammarError("invalid grammar, "
+                    + signature + ": " + signature + ";");
             }
             if (indexSeq.length > 0 && indexSeq[0] === 0) {
                 this.leftLoop.push(i);
@@ -289,7 +272,7 @@ class Law {
         );
     }
 
-    takeOver(factory: TreeNodeFactory, ptr: TreeNode, token: Token): TreeNode { //take over predict
+    takeOver(factory: TreeNodeFactory, ptr: TreeNode, token: Token): TreeNode {
         let concat: Array<number> = [];
         let sameAs: Array<number> = [];
         for (let i = 0; i < this.items.length; i++) {
@@ -305,28 +288,20 @@ class Law {
             throw new GrammarError("logical error");
         }
         if (concat.length === 0) { // sameAs.length > 0
-            return ptr.getParent();
-        }
-        if (sameAs.length === 0) {
-            for (let i = 0; i < concat.length; i++) {
-                if (this.parser.expect(this.items[concat[i]][ptr.getTemplate().length]).has(token.type)) {
-                    ptr.setTemplate(this.items[concat[i]]);
-                    return ptr;
-                }
+            if (this.leftLoop.length === 0) {
+                return ptr.getParent();
             }
-            throw new GrammarError("grammar error, " + token.text);
-        }
-        // concat.length > 0 && sameAs.length > 0
-        if (this.leftLoop.length > 0) {
             // left recursion rule reducing
             for (let i = 0; i < this.leftLoop.length; i++) {
-                if (this.parser.expect(this.items[this.leftLoop[i]][1]).has(token.type)) {
+                if (this.parser.expect(this.items[this.leftLoop[i]][1])
+                    .has(token.getType())) {
                     let node = factory
                         .build(ptr.getType())
                         .setParent(ptr.getParent())
                         .addChild(ptr)
                         .setTemplate(this.items[this.leftLoop[i]]);
-                    ptr.getParent().replaceChild(ptr.getParent().getChildSize() - 1, node);
+                    ptr.getParent()
+                        .replaceChild(ptr.getParent().getChildSize() - 1, node);
                     ptr.setParent(node);
                     return node;
                 }
@@ -336,18 +311,23 @@ class Law {
         }
         // concat type
         for (let i = 0; i < concat.length; i++) {
-            if (this.parser.expect(this.items[concat[i]][ptr.getTemplate().length]).has(token.type)) {
+            if (this.parser.expect(this.items[concat[i]][ptr.getTemplate().length])
+                .has(token.getType())) {
                 ptr.setTemplate(this.items[concat[i]]);
                 return ptr;
             }
+        }
+        if (sameAs.length === 0) {
+            throw new GrammarError("grammar error, " + token.getText());
         }
         // reducing type
         return ptr.getParent();
     }
 
-    initAccept(token: Token): Array<string> {
+    buildingTemplate(token: Token): Array<string> {
         for (let [header, indices] of this.indexedHeaders) {
-            if (this.parser.expect(header).has(token.type)) {
+            if (this.signature === header) continue;
+            if (this.parser.expect(header).has(token.getType())) {
                 if (indices.length === 1) {
                     return this.items[indices[0]];
                 } else {
@@ -359,7 +339,7 @@ class Law {
                 }
             }
         }
-        throw new GrammarError("grammar error, " + token.text);
+        throw new GrammarError("grammar error, " + token.getText());
     }
 
     private static satisfy(accepted: Array<string>, seq: Array<string>): number {
@@ -416,38 +396,48 @@ class Parser {
             .map(every => every.replace("\n", "").trim())
             .filter(every => every !== "")
             .forEach(every => {
-                console.debug("(law string)> " + every);
                 let law = Law.parse(every).setParser(_r);
                 _r.grammar.set(law.getSignature(), law);
                 _r.signSeq.add(law.getSignature());
-        });
+            });
         _r.factory = new TreeNodeFactory().setGrammar(_r.grammar);
         _r.walker  = new Walker();
         return _r;
     }
 
     printGrammar() {
-        console.info("Grammar: " + this.grammar.size);
-        console.info("Grammar: " + this.grammar.keys());
-        for (let key in this.grammar.keys()) {
-            console.info("key: " + key);
-        }
+        console.debug("Grammar: " + this.grammar.size);
         for (let signature of this.grammar.keys()) {
-            console.info(">> xx");
-            console.info(signature + ": \n\t" + this.grammar.get(signature).getItems().map(vec => vec.join(" ")).join("\n\t | "));
+            console.debug(
+                signature
+                + ": "
+                + this.grammar
+                    .get(signature)
+                    .getItems()
+                    .map(vec => vec.join(" "))
+                    .join("\n\t | ")
+            );
         }
+    }
+
+    isNode(type: string) {
+        return this.signSeq.has(type);
     }
 
     // @ts-ignore
     expect(signature: string): Set<string> {
         // @ts-ignore
         let _r: Set<string> = new Set<string>();
+        if (!this.signSeq.has(signature)) {
+            _r.add(signature);
+            return _r;
+        }
         // @ts-ignore
         let disabled: Set<string> = new Set<string>();
         this.grammar.get(signature).getLeaders().forEach(leader => {
             let hash = leader + "." + signature;
             if (disabled.has(hash)) {
-                throw new GrammarError("");
+                throw new GrammarError("grammar error, invalid cycle rule");
             } else {
                 disabled.add(hash);
             }
@@ -465,7 +455,7 @@ class Parser {
         this.ptr = this.root;
         let token: Token;
         lexer.set(s);
-        while ((token = lexer.lex()).type != "EOF") {
+        while ((token = lexer.lex()).getType() != "EOF") {
             this.buildTree(token);
         }
         this.buildTree(token)
@@ -522,9 +512,10 @@ class Parser {
 
     private buildTree(token: Token): void {
         if (this.ptr.getTemplate().length === 0) {
-            // TODO: init accepted
-            this.ptr.setTemplate(this.ptr.getLaw().initAccept(token));
+            // TODO: init template
+            this.ptr.setTemplate(this.ptr.getLaw().buildingTemplate(token));
         } else if (this.ptr.getChildSize() === this.ptr.getTemplate().length) {
+            if (this.isOver()) return;
             this.ptr = this.ptr.getLaw().takeOver(this.factory, this.ptr, token);
             this.buildTree(token);
             return;
@@ -535,17 +526,19 @@ class Parser {
             this.ptr = this.factory.build(expect).setParent(this.ptr);
             this.ptr.getParent().addChild(this.ptr);
             this.buildTree(token);
-        } else if (token.type === expect) {
+        } else if (token.getType() === expect) {
             this.ptr.addChild(this.factory.leaf(this.ptr, token));
         } else {
-            throw new GrammarError("");
+            throw new GrammarError(
+                "unexpected token \"" + token.getText() + "\"(" + token.getType() +
+                "); expect: " + expect
+            );
         }
     }
 }
 
 /**
- * The {@code TreeNodeFactory} is prepared for
- * generating TreeNode.
+ * The {@code TreeNodeFactory} is prepared for generating TreeNode.
  */
 class TreeNodeFactory {
     private static uuidGenerator: number = 0;
@@ -558,6 +551,8 @@ class TreeNodeFactory {
     }
 
     build(type: string): TreeNode {
+        console.debug("build node: " + type
+            + "; uid: " + (TreeNodeFactory.uuidGenerator + 1));
         return new TreeNode()
             .setUid(++TreeNodeFactory.uuidGenerator)
             .setType(type)
@@ -569,20 +564,20 @@ class TreeNodeFactory {
         return new TreeNode()
             .setUid(++TreeNodeFactory.uuidGenerator)
             .setParent(p)
-            .setText(token.text)
-            .setType(token.type)
+            .setText(token.getText())
+            .setType(token.getType())
             ;
     }
 }
-////////////////////////////////////////////////////
-// ***** 5. Parser definition **********************
-////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ************************************* 5. Parser definition *************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
 /**
  * {@code ParserTree}, key of grammar parsing.
  */
-////////////////////////////////////////////////////
-// ***** 6. Wrapper ********************************
-////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ****************************************** 6. Wrapper ******************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
 /**
  * Wrapper of all logic.
  */
@@ -626,10 +621,6 @@ class Grammar {
 //     Grammar,
 //     Walker
 // };
-////////////////////////////////////////////////////
-// ******************** OVER ***********************
-// ******************** OVER ***********************
-// ******************** OVER ***********************
-// ******************** OVER ***********************
-// ******************** OVER ***********************
-////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ****************************************** OVER ************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
