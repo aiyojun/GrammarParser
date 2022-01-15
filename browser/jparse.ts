@@ -455,6 +455,8 @@ class Parser {
     private pointer : TreeNode;
     private factory : TreeNodeFactory;
     private walker  : Walker;
+    private deepest : number = 0;
+    getDepth(): number {return this.deepest;}
     /**
      * Provide a entry.
      */
@@ -561,13 +563,14 @@ class Parser {
     /**
      * ASTree traversing and the custom listener functions executing.
      */
-    walkTree(node: TreeNode) {
+    walkTree(node: TreeNode, depth: number = 1) {
+        if (this.deepest < depth) this.deepest = depth;
         if (!this.signSeq.has(node.getType())) return;
         // TODO: enter
         this.walker.walk(node.getType(), node);
         if (node.getChildSize() !== 0) {
             for (let i = 0; i < node.getChildSize(); i++) {
-                this.walkTree(node.getChild(i));
+                this.walkTree(node.getChild(i), depth + 1);
             }
         }
         this.walker.walk(node.getType(), node, false);
@@ -696,7 +699,7 @@ class Grammar {
     }
 }
 /* Export for extern using */
-export { Token, TreeNode, Lexer, Parser, LexerError, GrammarError, Grammar };
+// export { Token, TreeNode, Lexer, Parser, LexerError, GrammarError, Grammar };
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ****************************************** OVER ************************************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
