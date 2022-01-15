@@ -5,19 +5,17 @@
  */
 
 /**
- * GrammarParser is a grammar parsing tool writen by typescript(This file). You can define lexer and
- * parser by yourself, and the way to create grammar rules is very easy and convinient.
+ * jparse.ts is a grammar parsing tool written by typescript(This file). You can define lexer and
+ * parser by yourself, and the way to create grammar rules is very easy and convenient.
  *
  * @author: aiyojun
- * If you have any question about this file, you can send mail to me. My email: 1608450902@qq.com
+ * If you have any question about this file, you can send mail to me.
  *
- * This file mainly include four parts:
- *     1. lexer       2. parser     3. tree node   4. grammar parser
+ * This file mainly include four parts: 1. lexer; 2. parser; 3. tree node; 4. grammar parser
  */
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// ************************************* 1. Exception definition **********************************
+// ******************************** 1. Exception definition ***************************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
 /**
  * The {@code LexerError} will be thrown in token lexing stage, if any problem occur.
  */
@@ -27,7 +25,7 @@ class LexerError extends Error {constructor(message?: string) {super(message);}}
  */
 class GrammarError extends Error {constructor(message?: string) {super(message);}}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// **************************** 2. Lexer and related tools definition *****************************
+// ************************** 2. Lexer and related tools definition *******************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /**
  * The {@code Token} is output after passing lexer. And now, i use the common method(type: string)
@@ -37,6 +35,7 @@ class Token {
     private readonly _text: string;
     private readonly _type: string;
     /**
+     * The unique method to create {@code Token}.
      * @param text raw token string
      * @param type token type, defined by yourself.
      *          like: FIELD, KEYWORD
@@ -44,12 +43,16 @@ class Token {
     static build(type: string, text: string) {
         return new Token(type, text);
     }
-
+    /**
+     * Hide the only one constructor.
+     */
     private constructor(type: string, text: string) {
         this._text = text;
         this._type = type;
     }
-
+    /**
+     * The standard member accessing is provided.
+     */
     getText(): string {return this._text;}
     getType(): string {return this._type;}
 }
@@ -58,22 +61,33 @@ class Token {
  * Lexer rule definition. Using regex to create Lexer rules!
  */
 class RegRule {
+    /**
+     * Necessary uid generator.
+     */
     private static uidGen = 0;
-
+    /**
+     * The following several variables are members of {@code RegRule}.
+     */
     private readonly _reg : RegExp;
     private readonly _uid : number;
     private readonly _type: string;
-
+    /**
+     * The only way to create {@code RegRule}
+     */
     static build(type: string, re: RegExp): RegRule {
         return new RegRule(type, re);
     }
-
+    /**
+     * Hide constructor of the class.
+     */
     private constructor(type: string, re: RegExp) {
         this._uid = RegRule.uidGen++;
         this._reg = re;
         this._type = type;
     }
-
+    /**
+     * Outer accessing for members.
+     */
     getReg() : RegExp {return this._reg;}
     getUid() : number {return this._uid;}
     getType(): string {return this._type;}
@@ -82,34 +96,40 @@ class RegRule {
  * The {@code Lexer} is a important part of GrammarParser.
  */
 class Lexer {
-    private _stringStream: string
-    private _rules: Array<RegRule> = []
-
-    set(s: string) {this._stringStream = s}
-
+    private _stream: string;
+    private _rules: Array<RegRule> = [];
+    /**
+     * Set string stream for {@code Lexer}
+     */
+    set(s: string): Lexer {this._stream = s; return this;}
+    /**
+     * Add rule for {@code Lexer}.
+     */
     rule(tokenName: string, regex: RegExp): Lexer {
         this._rules.push(RegRule.build(tokenName, regex));
         return this;
     }
-
+    /**
+     * Core method of {@code Lexer}, extract tokens from stream step by step.
+     */
     lex(): Token {
-        if (this._stringStream.length === 0)
+        if (this._stream.length === 0)
             return Token.build("EOF", "");
         let tokens: Array<Token> = []
         for (let i: number = 0; i < this._rules.length; i++) {
-            let r: Array<string> = this._stringStream.match(this._rules[i].getReg())
+            let r: Array<string> = this._stream.match(this._rules[i].getReg())
             if (r !== null) {
                 tokens.push(Token.build(this._rules[i].getType(), r[0]))
             }
         }
         for (let index in tokens) {
             if (tokens[index].getType() === "skip") {
-                this._stringStream = this._stringStream.substr(tokens[index].getText().length)
+                this._stream = this._stream.substr(tokens[index].getText().length)
                 return this.lex();
             }
         }
         if (tokens.length == 1) {
-            this._stringStream = this._stringStream.substr(tokens[0].getText().length)
+            this._stream = this._stream.substr(tokens[0].getText().length)
             return tokens[0]
         }
         if (tokens.length > 1) {
@@ -131,26 +151,38 @@ class Lexer {
                 }
             }
             let idx = same.get(tokens[longest.idx].getText()).pop();
-            this._stringStream = this._stringStream.substr(tokens[idx].getText().length);
+            this._stream = this._stream.substr(tokens[idx].getText().length);
             return tokens[idx];
         }
         throw new LexerError("Unexpected token: \""
-            + this._stringStream.substr(0, 10) + "\"")
+            + this._stream.substr(0, 10) + "\"")
     }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ****************************** 3. Core data structure: TreeNode ********************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * {@code TreeNode} is core data structure of abstract syntax tree(AST).
+ * The target of all the codes is to build the whole AST for users.
+ * Then, users can do what they want by using the AST.
+ * Of course, we also provide a way to help user to take advantage of the AST.
+ * {@see Walker}.
+ */
 class TreeNode {
-    /** core data structure */
-    private _uid: number = 0;
-    private _parent: TreeNode | null = null;
-    private _child: Array<TreeNode> = [];
-    /** parsed data */
-    private _text: string = "";
-    private _type: string = "";
-    private _template: Array<string> = [];
-    private _law: Law;
+    /**
+     * All the necessary information to build a tree.
+     * The Kept uid variable is to debug AST. Do not remove it!
+     */
+    private _uid      : number          = 0;
+    private _parent   : TreeNode | null = null;
+    private _child    : Array<TreeNode> = [];
+    /**
+     * The following are something to help to reduce the context.
+     */
+    private _text     : string          = "";
+    private _type     : string          = "";
+    private _template : Array<string>   = [];
+    private _law      : Law;
     /**
      * Chain invoking to set inner value.
      * Nice interface!
@@ -161,8 +193,8 @@ class TreeNode {
     replaceChild(i: number, c: TreeNode): TreeNode {this._child[i] = c; return this;}
     setText(t: string): TreeNode {this._text = t; return this;}
     setType(t: string): TreeNode {this._type = t; return this;}
-    setLaw(law: Law): TreeNode {this._law = law; return this;}
     setTemplate(t: Array<string>): TreeNode {this._template = t; return this;}
+    setLaw(law: Law): TreeNode {this._law = law; return this;}
     /**
      * Pack inner variables by providing getter methods.
      */
@@ -173,18 +205,32 @@ class TreeNode {
     getChildSize(): number {return this._child.length;}
     getText(): string {return this._text;}
     getType(): string {return this._type;}
-    getLaw(): Law {return this._law;}
     getTemplate(): Array<string> {return this._template;}
+    getLaw(): Law {return this._law;}
 }
-
+/**
+ * A standard listener pattern to take advantage of AST.
+ */
 class Walker {
+    /**
+     * Listener object provided by user. However, you have to create it by the common schema, like:
+     * {
+     *    "enter_xxx": () => {}, "exit_xxx": () => {},
+     *    // one entry, one exit.
+     *    // write the rest listener functions of grammar rules.
+     * }
+     */
     private _obj: Object;
-
+    /**
+     * Set inner listener object.
+     */
     listen(obj: Object): Walker {
         this._obj = obj;
         return this;
     }
-
+    /**
+     * Inner invoking! Pick the related listener function and execute, when the pointer is passing a node.
+     */
     walk(type: string, node: TreeNode, enter: boolean = true) {
         if (enter && this._obj.hasOwnProperty("enter_" + type)
             && (this._obj["enter_" + type] instanceof Function)) {
@@ -198,16 +244,42 @@ class Walker {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ********************************* 4. Grammar item definition ***********************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * We call the grammar item {@code Law}! It's a rich type, including many functions which can help
+ * to build the ASTree! You can explore the inner logic if you are interested in it!
+ */
 class Law {
     private static uidGen: number = 0;
     private parser: Parser;
-    private readonly leftLoop: Array<number>;
     private readonly uid: number;
     private readonly signature: string;
+    private readonly leftLoop: Array<number>;
     private readonly items: Array<Array<string>>;
     // @ts-ignore
     private indexedHeaders: Map<string, Array<number>>;
-
+    /**
+     * The method to create a law by parsing strings of grammar rule.
+     */
+    static parse(str: string): Law {
+        str = str.trim();
+        let p = str.indexOf(":");
+        if (p <= 0 || p >= str.length) {
+            throw new GrammarError("parse law failed");
+        }
+        let signature = str.substr(0, p).trim();
+        return new Law(
+            signature,
+            str.substr(p + 1)
+                .trim()
+                .split("|")
+                .map(itemStr =>
+                    itemStr.split(" ")
+                        .filter(s => s !== ""))
+        );
+    }
+    /**
+     * The hidden constructor. Didn't provide way to create {@code Law} for user.
+     */
     private constructor(
         signature: string,
         items: Array<Array<string>>
@@ -243,41 +315,28 @@ class Law {
             }
         }
     }
-
+    /**
+     * A part of getter and setter.
+     */
     setParser(parser: Parser): Law {this.parser = parser; return this;}
-
     getUid(): number {return this.uid;}
     getSignature(): string {return this.signature;}
     getItems(): Array<Array<string>> {return this.items;}
-
+    /**
+     * Grab the headers of every rule.
+     */
     getLeaders(): Array<string> {
         return this.items.map(arr => arr[0]).filter(s => s !== this.signature);
     }
-
-    static parse(str: string): Law {
-        str = str.trim();
-        let p = str.indexOf(":");
-        if (p <= 0 || p >= str.length) {
-            throw new GrammarError("parse law failed");
-        }
-        let signature = str.substr(0, p).trim();
-        return new Law(
-            signature,
-            str.substr(p + 1)
-                .trim()
-                .split("|")
-                .map(itemStr =>
-                    itemStr.split(" ")
-                        .filter(s => s !== ""))
-        );
-    }
-
-    takeOver(factory: TreeNodeFactory, ptr: TreeNode, token: Token): TreeNode {
+    /**
+     * Stage analysis.
+     */
+    takeOver(factory: TreeNodeFactory, pointer: TreeNode, token: Token): TreeNode {
         let concat: Array<number> = [];
         let sameAs: Array<number> = [];
         for (let i = 0; i < this.items.length; i++) {
             let itemSeq = this.items[i];
-            let decision = Law.satisfy(ptr.getTemplate(), itemSeq);
+            let decision = Law.satisfy(pointer.getTemplate(), itemSeq);
             if (decision === 1) {
                 concat.push(i);
             } else if (decision === 2) {
@@ -289,41 +348,43 @@ class Law {
         }
         if (concat.length === 0) { // sameAs.length > 0
             if (this.leftLoop.length === 0) {
-                return ptr.getParent();
+                return pointer.getParent();
             }
             // left recursion rule reducing
             for (let i = 0; i < this.leftLoop.length; i++) {
                 if (this.parser.expect(this.items[this.leftLoop[i]][1])
                     .has(token.getType())) {
                     let node = factory
-                        .build(ptr.getType())
-                        .setParent(ptr.getParent())
-                        .addChild(ptr)
+                        .build(pointer.getType())
+                        .setParent(pointer.getParent())
+                        .addChild(pointer)
                         .setTemplate(this.items[this.leftLoop[i]]);
-                    ptr.getParent()
-                        .replaceChild(ptr.getParent().getChildSize() - 1, node);
-                    ptr.setParent(node);
+                    pointer.getParent()
+                        .replaceChild(pointer.getParent().getChildSize() - 1, node);
+                    pointer.setParent(node);
                     return node;
                 }
             }
             // left recursion with simple rule to reduce
-            return ptr.getParent();
+            return pointer.getParent();
         }
         // concat type
         for (let i = 0; i < concat.length; i++) {
-            if (this.parser.expect(this.items[concat[i]][ptr.getTemplate().length])
+            if (this.parser.expect(this.items[concat[i]][pointer.getTemplate().length])
                 .has(token.getType())) {
-                ptr.setTemplate(this.items[concat[i]]);
-                return ptr;
+                pointer.setTemplate(this.items[concat[i]]);
+                return pointer;
             }
         }
         if (sameAs.length === 0) {
             throw new GrammarError("grammar error, " + token.getText());
         }
         // reducing type
-        return ptr.getParent();
+        return pointer.getParent();
     }
-
+    /**
+     * Initialization of template.
+     */
     buildingTemplate(token: Token): Array<string> {
         for (let [header, indices] of this.indexedHeaders) {
             if (this.signature === header) continue;
@@ -341,7 +402,9 @@ class Law {
         }
         throw new GrammarError("grammar error, " + token.getText());
     }
-
+    /**
+     * Inner method.
+     */
     private static satisfy(accepted: Array<string>, seq: Array<string>): number {
         if (accepted.length > seq.length) return 0;
         for (let i = 0; i < accepted.length; i++) {
@@ -351,7 +414,9 @@ class Law {
         }
         return accepted.length !== seq.length ? 1 : 2;
     }
-
+    /**
+     * Inner method.
+     */
     private shared(indices: Array<number>): Array<string> {
         let minSize = this.items[indices[0]].length;
         for (let i = 1; i < indices.length; i++) {
@@ -372,19 +437,27 @@ class Law {
         return _r;
     }
 }
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ************************************* 5. Parser definition *************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * {@code Parser} provides all functions of parsing grammar.
+ * First, you should create a lexer and a parser by passing the related grammar rules context.
+ * Then, specify the start rule and move the lexer to the parser to run parsing process.
+ * Finally, bind the listener which is defined by yourself.
+ */
 class Parser {
     // @ts-ignore
-    private grammar: Map<string, Law>;
+    private grammar : Map<string, Law>;
     // @ts-ignore
-    private signSeq: Set<string>;
-    private ptr: TreeNode;
-    private root: TreeNode;
-    private factory: TreeNodeFactory;
-    private walker: Walker;
-
-    private constructor() {}
-
+    private signSeq : Set<string>;
+    private root    : TreeNode;
+    private pointer : TreeNode;
+    private factory : TreeNodeFactory;
+    private walker  : Walker;
+    /**
+     * Provide a entry.
+     */
     static build(context: string): Parser {
         let _r = new Parser();
         // @ts-ignore
@@ -404,7 +477,13 @@ class Parser {
         _r.walker  = new Walker();
         return _r;
     }
-
+    /**
+     * You know: hide!
+     */
+    private constructor() {}
+    /**
+     * Reserved for debugging.
+     */
     printGrammar() {
         console.debug("Grammar: " + this.grammar.size);
         for (let signature of this.grammar.keys()) {
@@ -419,11 +498,9 @@ class Parser {
             );
         }
     }
-
-    isNode(type: string) {
-        return this.signSeq.has(type);
-    }
-
+    /**
+     * Put this method in {@code Parser} class. Because it needs to use the shared information.
+     */
     // @ts-ignore
     expect(signature: string): Set<string> {
         // @ts-ignore
@@ -449,10 +526,12 @@ class Parser {
         });
         return _r;
     }
-
+    /**
+     * Public interface to run parsing process.
+     */
     parse(s: string, grammarStart: string, lexer: Lexer): void {
         this.root = this.factory.build(grammarStart);
-        this.ptr = this.root;
+        this.pointer = this.root;
         let token: Token;
         lexer.set(s);
         while ((token = lexer.lex()).getType() != "EOF") {
@@ -460,20 +539,28 @@ class Parser {
         }
         this.buildTree(token)
     }
-
+    /**
+     * Method to ask whether the ASTree building is over.
+     */
     isOver(): boolean {
-        return this.root.getUid() === this.ptr.getUid();
+        return this.root.getUid() === this.pointer.getUid();
     }
-
+    /**
+     * Obtain the root of ASTree. Then, you can do what you want!
+     */
     getTree(): TreeNode {
         return this.root;
     }
-
+    /**
+     * Listener binding.
+     */
     listen(o: Object): Parser {
         this.walker.listen(o);
         return this;
     }
-
+    /**
+     * ASTree traversing and the custom listener functions executing.
+     */
     walkTree(node: TreeNode) {
         if (!this.signSeq.has(node.getType())) return;
         // TODO: enter
@@ -486,11 +573,16 @@ class Parser {
         this.walker.walk(node.getType(), node, false);
         // TODO: exit
     }
-
+    /**
+     * If you want to look the ASTree structure by echarts,
+     * you can invoke the method to obtain the Json data of the tree!
+     */
     getTreeJson(): Object {
         return this.getTreeJsonInner(this.root);
     }
-
+    /**
+     * Prepared for getTreeJson() method, inner invoking!
+     */
     private getTreeJsonInner(node: TreeNode): Object {
         let text: string;
         if (!this.signSeq.has(node.getType())) {
@@ -511,23 +603,23 @@ class Parser {
     }
 
     private buildTree(token: Token): void {
-        if (this.ptr.getTemplate().length === 0) {
+        if (this.pointer.getTemplate().length === 0) {
             // TODO: init template
-            this.ptr.setTemplate(this.ptr.getLaw().buildingTemplate(token));
-        } else if (this.ptr.getChildSize() === this.ptr.getTemplate().length) {
+            this.pointer.setTemplate(this.pointer.getLaw().buildingTemplate(token));
+        } else if (this.pointer.getChildSize() === this.pointer.getTemplate().length) {
             if (this.isOver()) return;
-            this.ptr = this.ptr.getLaw().takeOver(this.factory, this.ptr, token);
+            this.pointer = this.pointer.getLaw().takeOver(this.factory, this.pointer, token);
             this.buildTree(token);
             return;
         }
         // TODO:
-        let expect = this.ptr.getTemplate()[this.ptr.getChildSize()];
+        let expect = this.pointer.getTemplate()[this.pointer.getChildSize()];
         if (this.signSeq.has(expect)) {
-            this.ptr = this.factory.build(expect).setParent(this.ptr);
-            this.ptr.getParent().addChild(this.ptr);
+            this.pointer = this.factory.build(expect).setParent(this.pointer);
+            this.pointer.getParent().addChild(this.pointer);
             this.buildTree(token);
         } else if (token.getType() === expect) {
-            this.ptr.addChild(this.factory.leaf(this.ptr, token));
+            this.pointer.addChild(this.factory.leaf(this.pointer, token));
         } else {
             throw new GrammarError(
                 "unexpected token \"" + token.getText() + "\"(" + token.getType() +
@@ -549,7 +641,9 @@ class TreeNodeFactory {
         this.grammar = grammar;
         return this;
     }
-
+    /**
+     * Way to create middle node of ASTree.
+     */
     build(type: string): TreeNode {
         console.debug("build node: " + type
             + "; uid: " + (TreeNodeFactory.uuidGenerator + 1));
@@ -559,7 +653,9 @@ class TreeNodeFactory {
             .setLaw(this.grammar.get(type))
             ;
     }
-
+    /**
+     * Way to create leaf node of ASTree.
+     */
     leaf(p: TreeNode, token: Token): TreeNode {
         return new TreeNode()
             .setUid(++TreeNodeFactory.uuidGenerator)
@@ -569,12 +665,6 @@ class TreeNodeFactory {
             ;
     }
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// ************************************* 5. Parser definition *************************************
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/**
- * {@code ParserTree}, key of grammar parsing.
- */
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ****************************************** 6. Wrapper ******************************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -606,21 +696,7 @@ class Grammar {
     }
 }
 /* Export for extern using */
-// export {
-//     Token,
-//     Lexer,
-//     LexerError,
-//     GrammarError,
-//     RuleType,
-//     Rule,
-//     RegRule,
-//     TreeNode,
-//     TreeNodeFactory,
-//     ParserTree,
-//     GrammarItem,
-//     Grammar,
-//     Walker
-// };
+export { Token, TreeNode, Lexer, Parser, LexerError, GrammarError, Grammar };
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ****************************************** OVER ************************************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
