@@ -1,29 +1,48 @@
+root
+    : start
+    ;
+
 start
-	: modulesDeclare
-	| modulesDeclare classDefine
-	| classDefine
+	: moduleDeclare
+	| moduleDeclare classesDefine
+	| classesDefine
 	;
 
-// modulesDeclare classDefine | classDefine;
+moduleDeclare
+    : moduleDeclare IMPORT IDENTIFIER SEMI
+    | IMPORT IDENTIFIER SEMI
+    ;
 
-x1: x2;
+classesDefine
+    : classesDefine classDefine
+    | classDefine
+    ;
 
-x2: x1;
+classDefine
+    : CLASS IDENTIFIER LB RB
+    | CLASS IDENTIFIER LB classMemberDefine RB
+    ;
 
-header: [p0, p1, ...];
+classMemberDefine
+    : classMemberDefine memberDefine
+    | memberDefine
+    ;
 
-Set<string>
+memberDefine
+    : limitedMemberDefine
+    | PRIVATE limitedMemberDefine
+    ;
 
-optionalModulesDeclare: modulesDeclare | optionalClassDefine;
+limitedMemberDefine
+    : methodDefine
+    | variableDefine
+    ;
 
-optionalClassDefine: classDefine | EOF;
+methodDefine
+    : DEF IDENTIFIER LP RP LB RB
+    ;
 
-xxx: xxx atom | atom;
-
-modulesDeclare: modulesDeclare moduleAtomDeclare | moduleAtomDeclare;
-
-moduleAtomDeclare: IMPORT module SEMI;
-
-classDefine: CLASS LB RP;
-
-
+variableDefine
+    : VAL IDENTIFIER COLON IDENTIFIER SEMI
+    | VAR IDENTIFIER COLON IDENTIFIER SEMI
+    ;

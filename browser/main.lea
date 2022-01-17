@@ -1,0 +1,20 @@
+import os;
+import sys;
+
+class Main {
+    val uid: int;
+
+    private val type: string;
+
+    def main() {
+        var x: int = 12;
+        var s: string = "text";
+        s = "another text";
+        s = "text_" + x;
+        s = getName();
+        s = makeName(x);
+        Main.method01();
+        1 + 32;
+        add(s, x2, x3, 3+ x4);
+    }
+}

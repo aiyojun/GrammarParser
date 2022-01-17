@@ -13,6 +13,13 @@
  *
  * This file mainly include four parts: 1. lexer; 2. parser; 3. tree node; 4. grammar parser
  */
+class utils {
+    static set2array(s: Set<string>): Array<string> {
+        let _r: Array<string> = [];
+        for (let i in s) {_r.push(i);}
+        return _r;
+    }
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ******************************** 1. Exception definition ***************************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -272,8 +279,11 @@ class Law {
             str.substr(p + 1)
                 .trim()
                 .split("|")
+                .map(str => str.trim())
+                .filter(item => item !== "")
                 .map(itemStr =>
                     itemStr.split(" ")
+                        .map(s => s.replace("\n", ""))
                         .filter(s => s !== ""))
         );
     }
@@ -326,7 +336,11 @@ class Law {
      * Grab the headers of every rule.
      */
     getLeaders(): Array<string> {
-        return this.items.map(arr => arr[0]).filter(s => s !== this.signature);
+        let _r: Array<string> = [];
+        this.items.map(arr => arr[0]).filter(s => s !== this.signature).forEach(
+            s => {if (_r.indexOf(s) === -1) _r.push(s);}
+        )
+        return _r;
     }
     /**
      * Stage analysis.
@@ -346,11 +360,32 @@ class Law {
         if (concat.length === 0 && sameAs.length === 0) {
             throw new GrammarError("logical error");
         }
+        console.debug("Take over analysis: ");
+        console.debug("··node: " + pointer.getType());
+        console.debug("··template: " + pointer.getTemplate().join(", "));
+        console.debug("··concat.length=" + concat.length + "; same.length="+ sameAs.length);
+        console.debug("··law: " + this.getSignature());
+        console.debug("····grammar(items): ");
+        this.items.forEach(arr => {console.debug("······" + arr.join(", "))});
         if (concat.length === 0) { // sameAs.length > 0
             if (this.leftLoop.length === 0) {
                 return pointer.getParent();
             }
             // left recursion rule reducing
+            let sharedPartition = this.shared(this.leftLoop);
+            if (this.leftLoop.length > 1 && sharedPartition.length > 1 &&
+                this.parser.expect(this.items[this.leftLoop[0]][1]).has(token.getType())) {
+                let node = factory
+                    .build(pointer.getType())
+                    .setParent(pointer.getParent())
+                    .addChild(pointer)
+                    .setTemplate(sharedPartition);
+                pointer.getParent()
+                    .replaceChild(pointer.getParent().getChildSize() - 1, node);
+                pointer.setParent(node);
+                return node;
+            }
+            // shared partition length === 1
             for (let i = 0; i < this.leftLoop.length; i++) {
                 if (this.parser.expect(this.items[this.leftLoop[i]][1])
                     .has(token.getType())) {
@@ -377,7 +412,7 @@ class Law {
             }
         }
         if (sameAs.length === 0) {
-            throw new GrammarError("grammar error, " + token.getText());
+            throw new GrammarError("grammar error, " + token.getText() + "; after: " + this.parser.getRecord());
         }
         // reducing type
         return pointer.getParent();
@@ -400,7 +435,19 @@ class Law {
                 }
             }
         }
-        throw new GrammarError("grammar error, " + token.getText());
+        console.debug("++++++++++++++++++++++")
+        console.debug("Build template failed:");
+        console.debug("··node: " + this.parser.pointer.getType());
+        console.debug("··law: " + this.getSignature());
+        console.debug("····grammar(items): ");
+        this.items.forEach(arr => {console.debug("      " + arr.join(", "))});
+        console.debug("··expect:");
+        for (let [header, indices] of this.indexedHeaders) {
+            console.debug("····" + header + "[" + indices.join(",") + "] "
+                + utils.set2array(this.parser.expect(header)).join(", "));
+        }
+        throw new GrammarError("grammar error, " + token.getText() + "(" + token.getType()
+            + "); law: " + this.getSignature() + "; after: " + this.parser.getRecord());
     }
     /**
      * Inner method.
@@ -440,6 +487,52 @@ class Law {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ************************************* 5. Parser definition *************************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+class LawNode {
+    // @ts-ignore
+    static root: LawNode;
+    private static _nodes: Map<string, LawNode> = new Map<string, LawNode>();
+
+    private _name: string;
+    private _parent: LawNode;
+
+    private constructor(name: string, parent: LawNode = null) {
+        this._name = name;
+        this._parent = parent;
+    }
+
+    static add(name: string, parentName: string) {
+        if (!LawNode._nodes.has(parentName)) {
+            LawNode._nodes.set(parentName, new LawNode(parentName));
+        }
+        if (LawNode._nodes.has(name)) {
+            throw new GrammarError("repeat LawNode! " + name);
+        }
+        LawNode._nodes.set(name, new LawNode(name, LawNode._nodes.get(parentName)));
+        // if (parentName === null) {
+        //     LawNode._nodes.clear();
+        //     let lawNode = new LawNode(name, null);
+        //     LawNode.root = lawNode;
+        //     LawNode._nodes.set(name, lawNode);
+        //     return;
+        // }
+        // if (!LawNode._nodes.has(parentName)) {
+        //     throw new GrammarError("cannot find parent law: " + parentName + ", for " + name);
+        // }
+        // LawNode._nodes.set(name, new LawNode(name, LawNode._nodes.get(parentName)));
+    }
+
+    static getChain(name: string): Array<string> {
+        let _r: Array<string> = [];
+        if (LawNode._nodes.has(name)) {
+            let lawNode: LawNode = LawNode._nodes.get(name)._parent;
+            while (lawNode !== null) {
+                _r.push(lawNode._name);
+                lawNode = lawNode._parent;
+            }
+        }
+        return _r;
+    }
+}
 /**
  * {@code Parser} provides all functions of parsing grammar.
  * First, you should create a lexer and a parser by passing the related grammar rules context.
@@ -452,10 +545,13 @@ class Parser {
     // @ts-ignore
     private signSeq : Set<string>;
     private root    : TreeNode;
-    private pointer : TreeNode;
+            pointer : TreeNode;
     private factory : TreeNodeFactory;
     private walker  : Walker;
     private deepest : number = 0;
+    private records : Array<Token> = [];
+    // private disable : Set<string>;
+    // private fromBeg : Set<string>;
     getDepth(): number {return this.deepest;}
     /**
      * Provide a entry.
@@ -466,19 +562,51 @@ class Parser {
         _r.grammar = new Map<string, Law>();
         // @ts-ignore
         _r.signSeq = new Set<string>();
+        // _r.fromBeg = new Set<string>();
+        // _r.disable = new Set<string>();
+        // let index = 0;
         context.replace("\n", "")
             .split(";")
-            .map(every => every.replace("\n", "").trim())
+            .map(every => every.replace("\n", "").replace("\t", "").trim())
             .filter(every => every !== "")
             .forEach(every => {
                 let law = Law.parse(every).setParser(_r);
+                // if (index === 0)
+                //     LawNode.add(law.getSignature());
+                // index++;
                 _r.grammar.set(law.getSignature(), law);
                 _r.signSeq.add(law.getSignature());
+                // law.getLeaders().forEach(
+                //     leader => {
+                //         _r.fromBeg.add(law.getSignature() + "." + leader);
+                //         _r.disable.add(leader + "." + law.getSignature());
+                //         LawNode.add(leader, law.getSignature());
+                //         LawNode.getChain(leader).forEach(trace => {
+                //             _r.disable.add(leader + "." + trace)
+                //         });
+                //     });
             });
         _r.factory = new TreeNodeFactory().setGrammar(_r.grammar);
         _r.walker  = new Walker();
         return _r;
     }
+    // static hasChain(sign: string, container: Set<string>): string | null {
+    //     for (let every of container) {
+    //         let everySigns = every.split(".");
+    //         if (sign === everySigns[0]) {
+    //             return everySigns[1];
+    //         }
+    //     }
+    //     return null;
+    // }
+    // static getChain(sign: string, container: Set<string>) {
+    //     let _r: Array<string> = [];
+    //     let every: string | null;
+    //     while ((every = Parser.hasChain(sign, container)) !== null) {
+    //         _r.push(every);
+    //     }
+    //     return _r;
+    // }
     /**
      * You know: hide!
      */
@@ -512,21 +640,42 @@ class Parser {
             return _r;
         }
         // @ts-ignore
-        let disabled: Set<string> = new Set<string>();
+        // let disabled: Set<string> = new Set<string>();
+        // console.debug(signature + " \tget leaders: " + this.grammar.get(signature).getLeaders().join(", "))
         this.grammar.get(signature).getLeaders().forEach(leader => {
-            let hash = leader + "." + signature;
-            if (disabled.has(hash)) {
-                throw new GrammarError("grammar error, invalid cycle rule");
-            } else {
-                disabled.add(hash);
-            }
+            // let hash = signature + "." + leader;
+            // if (this.disable.has(hash)) {
+            //     throw new GrammarError("grammar error, invalid cycle rule: " + hash);
+            // }
+            // if (this.signSeq.has(leader) && disabled.has(hash)) {
+            //     console.info("disabled cycle rules:\n");
+            //     for (let k of disabled) {
+            //         console.info("  " + k);
+            //     }
+            //     throw new GrammarError("grammar error, invalid cycle rule: " + hash);
+            // } else {
+            //     disabled.add(hash);
+            // }
             if (this.signSeq.has(leader)) {
                 this.expect(leader).forEach(every => _r.add(every));
             } else {
+                // console.debug("  signature: " + signature + "; header: " + leader);
                 _r.add(leader);
             }
         });
         return _r;
+    }
+
+    private record(token: Token) {
+        let recordSize = 5;
+        this.records.push(token);
+        if (this.records.length > recordSize) {
+            let numberToRemove = this.records.length - recordSize;
+            this.records = this.records.slice(numberToRemove);
+        }
+    }
+    getRecord(): string {
+        return this.records.map(token => token.getText()).join(" ");
     }
     /**
      * Public interface to run parsing process.
@@ -538,6 +687,7 @@ class Parser {
         lexer.set(s);
         while ((token = lexer.lex()).getType() != "EOF") {
             this.buildTree(token);
+            this.record(token);
         }
         this.buildTree(token)
     }
@@ -545,6 +695,11 @@ class Parser {
      * Method to ask whether the ASTree building is over.
      */
     isOver(): boolean {
+        console.debug("Over check:");
+        console.debug(
+            "··root: " + this.root.getType() + "[" + this.root.getUid() + "]; " +
+            "pointer: " + this.pointer.getType() + "[" + this.pointer.getUid() + "]"
+        );
         return this.root.getUid() === this.pointer.getUid();
     }
     /**
@@ -609,9 +764,20 @@ class Parser {
         if (this.pointer.getTemplate().length === 0) {
             // TODO: init template
             this.pointer.setTemplate(this.pointer.getLaw().buildingTemplate(token));
+            console.debug("Node template init result:");
+            console.debug("··node: " + this.pointer.getType());
+            console.debug("··template: " + this.pointer.getTemplate().join(", "));
+            console.debug("··next token: " + token.getText() + "(" + token.getType() + ")");
         } else if (this.pointer.getChildSize() === this.pointer.getTemplate().length) {
-            if (this.isOver()) return;
+            console.debug("[>>] Reduce tree(before law take over):");
+            console.debug("··node: " + this.pointer.getType());
+            console.debug("··template: " + this.pointer.getTemplate().join(", "));
+            console.debug("··next token: " + token.getText() + "(" + token.getType() + ")");
+            if (this.isOver() && token.getType() === "EOF") return;
             this.pointer = this.pointer.getLaw().takeOver(this.factory, this.pointer, token);
+            console.debug("[<<] Reduce tree(after):");
+            console.debug("··node: " + this.pointer.getType());
+            console.debug("··template: " + this.pointer.getTemplate().join(", "));
             this.buildTree(token);
             return;
         }
@@ -621,12 +787,17 @@ class Parser {
             this.pointer = this.factory.build(expect).setParent(this.pointer);
             this.pointer.getParent().addChild(this.pointer);
             this.buildTree(token);
-        } else if (token.getType() === expect) {
+        } else if (token.getType() == expect) {
             this.pointer.addChild(this.factory.leaf(this.pointer, token));
         } else {
+            console.debug("Normal logic error:");
+            console.debug("··node: " + this.pointer.getType());
+            console.debug("··template: " + this.pointer.getTemplate().join(", "));
+            console.debug("··children: " + this.pointer.getChildSize());
+            console.debug("··expect: " + expect);
             throw new GrammarError(
                 "unexpected token \"" + token.getText() + "\"(" + token.getType() +
-                "); expect: " + expect
+                "); expect: (" + expect + "); after: " + this.getRecord()
             );
         }
     }
@@ -648,8 +819,6 @@ class TreeNodeFactory {
      * Way to create middle node of ASTree.
      */
     build(type: string): TreeNode {
-        console.debug("build node: " + type
-            + "; uid: " + (TreeNodeFactory.uuidGenerator + 1));
         return new TreeNode()
             .setUid(++TreeNodeFactory.uuidGenerator)
             .setType(type)
@@ -679,10 +848,16 @@ class Grammar {
         let r_lexer: Lexer = new Lexer();
         grammar.split("\n").forEach(line => {
             if (line.trim() === "") return;
-            let group = line.split(":");
-            if (group.length !== 2) {
-                throw new LexerError("lexer string error");
+            let group = [];// = line.split(":");
+            let colon = line.indexOf(":");
+            if (colon < 1 || colon > line.length - 2) {
+                throw new LexerError("lexer string error, " + line);
             }
+            group.push(line.substr(0, colon));
+            group.push(line.substr(colon + 1));
+            // if (group.length !== 2) {
+            //     throw new LexerError("lexer string error, " + line);
+            // }
             let signature: string = group[0].replace(" ", "");
             let r_reg: string = group[1].trim();
             if (r_reg === null || r_reg.length === 0) {

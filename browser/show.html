@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdn.staticfile.org/echarts/5.2.2/echarts.min.js"></script>
+  <script src="jparse.js"></script>
+  <title>show grammar</title>
+</head>
+<body>
+<div id="treeChart" style="width: 1200px; height: 800px;"></div>
+<script type="text/javascript">
+  function main() {
+    console.info(">> parser running...");
+    let str     = "show xxx when a = 12 and (b != -9.09 or c < -74) or (d = 43.00 and e != \"hello \\\"oh\")";
+    let words   = "skip: ^[ ]\n" +
+        "FIELD: ^[a-zA-Z_][a-zA-Z0-9_]*\n" +
+        "SHOW: ^(show|SHOW)\n" +
+        "WHEN: ^(when|WHEN)\n" +
+        "AND: ^(and|AND)\n" +
+        "OR: ^(or|OR)\n" +
+        "LP: ^\\(\n" +
+        "RP: ^\\)\n" +
+        "OP: ^(=|!=|>=|>|<=|<)\n" +
+        "VALUE: ^(((-)?([0-9]+\\.)?[0-9]+)|('((\\\\')|[^'])*')|(\"((\\\\\")|[^\"])*\"))";
+    let grammar = "start: SHOW FIELD WHEN expr;\n" +
+        "expr: expr OR andExpr | andExpr;\n" +
+        "andExpr: andExpr AND atom | atom;\n" +
+        "atom: LP expr RP | FIELD OP VALUE;";
+    let lexer   = Grammar.lexer(words);
+    let tree    = Grammar.parser(grammar);
+    tree.printGrammar();
+    try {
+      tree.parse(str, "start", lexer);
+    } catch (e) {
+      console.error(e);
+    }
+    console.info(">> isOver: " + tree.isOver());
+    let data = tree.getTreeJson();
+    tree.listen({
+      enter_start: function (node) {console.info(">> enter start: " + node.getUid());},
+      exit_start : function (node) {console.info(">> exit start: "  + node.getUid());},
+      enter_expr : function (node) {console.info(">> enter expr: "  + node.getUid());},
+      exit_expr  : function (node) {console.info(">> exit expr: "   + node.getUid());},
+      enter_atom : function (node) {console.info(">> enter atom: "  + node.getUid());},
+      exit_atom  : function (node) {console.info(">> exit atom: "   + node.getUid());},
+    });
+    tree.walkTree(tree.getTree());
+    console.info(">>  depth: " + tree.getDepth());
+    drawTree(data, tree.getDepth());
+  }
+
+  function drawTree(data, depth) {
+    let chartDom = document.getElementById('treeChart');
+    let myChart = echarts.init(chartDom);
+    let option;
+    myChart.showLoading();
+    myChart.hideLoading();
+    data.children.forEach(function (datum, index) {
+      index % 2 === 0 && (datum.collapsed = true);
+    });
+    myChart.setOption(
+            (option = {
+              tooltip: {
+                trigger: 'item',
+                triggerOn: 'mousemove'
+              },
+              series: [
+                {
+                  type: 'tree',
+                  data: [data],
+                  top: '1%',
+                  left: '7%',
+                  bottom: '1%',
+                  right: '20%',
+                  symbolSize: 7,
+                  // orient: 'vertical',
+                  label: {
+                    position: 'left',
+                    verticalAlign: 'middle',
+                    align: 'right',
+                    // rotate: 90,
+                    fontSize: 12
+                  },
+                  leaves: {
+                    label: {
+                      position: 'right',
+                      verticalAlign: 'middle',
+                      // rotate: 0,
+                      align: 'left'
+                    }
+                  },
+                  emphasis: {
+                    focus: 'descendant'
+                  },
+                  initialTreeDepth: 20,
+                  expandAndCollapse: true,
+                  animationDuration: 550,
+                  animationDurationUpdate: 750
+                }
+              ]
+            })
+    );
+    option && myChart.setOption(option);
+  }
+
+  main();
+</script>
+</body>
+</html>
