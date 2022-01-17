@@ -14,6 +14,7 @@
  * This file mainly include four parts: 1. lexer; 2. parser; 3. tree node; 4. grammar parser
  */
 class utils {
+    // @ts-ignore
     static set2array(s: Set<string>): Array<string> {
         let _r: Array<string> = [];
         for (let i in s) {_r.push(i);}
@@ -362,7 +363,10 @@ class Law {
         }
         console.debug("Take over analysis: ");
         console.debug("··node: " + pointer.getType());
+        console.debug("··uid: " + pointer.getUid());
         console.debug("··template: " + pointer.getTemplate().join(", "));
+        console.debug("··children: " + pointer.getChildren().map(node =>
+            (node.getText() === null || node.getText() === "") ? "·" : node.getText()).join(", "));
         console.debug("··concat.length=" + concat.length + "; same.length="+ sameAs.length);
         console.debug("··law: " + this.getSignature());
         console.debug("····grammar(items): ");
@@ -372,9 +376,32 @@ class Law {
                 return pointer.getParent();
             }
             // left recursion rule reducing
-            let sharedPartition = this.shared(this.leftLoop);
-            if (this.leftLoop.length > 1 && sharedPartition.length > 1 &&
-                this.parser.expect(this.items[this.leftLoop[0]][1]).has(token.getType())) {
+            let indices: Array<number> = [];
+            if (this.leftLoop.length > 1) {
+                this.leftLoop.forEach(index => {
+                    if (this.parser.expect(this.items[index][1]).has(token.getType())) {
+                        indices.push(index);
+                    }
+                });
+            } else if (this.leftLoop.length === 1
+                && this.parser.expect(this.items[this.leftLoop[0]][1]).has(token.getType())) {
+                indices.push(this.leftLoop[0]);
+            }
+            if (indices.length === 0) {
+                // left recursion with simple rule to reduce
+                return pointer.getParent();
+            } else if (indices.length === 1) {
+                let node = factory
+                    .build(pointer.getType())
+                    .setParent(pointer.getParent())
+                    .addChild(pointer)
+                    .setTemplate(this.items[indices[0]]);
+                pointer.getParent()
+                    .replaceChild(pointer.getParent().getChildSize() - 1, node);
+                pointer.setParent(node);
+                return node;
+            } else {
+                let sharedPartition = this.shared(indices);
                 let node = factory
                     .build(pointer.getType())
                     .setParent(pointer.getParent())
@@ -385,23 +412,6 @@ class Law {
                 pointer.setParent(node);
                 return node;
             }
-            // shared partition length === 1
-            for (let i = 0; i < this.leftLoop.length; i++) {
-                if (this.parser.expect(this.items[this.leftLoop[i]][1])
-                    .has(token.getType())) {
-                    let node = factory
-                        .build(pointer.getType())
-                        .setParent(pointer.getParent())
-                        .addChild(pointer)
-                        .setTemplate(this.items[this.leftLoop[i]]);
-                    pointer.getParent()
-                        .replaceChild(pointer.getParent().getChildSize() - 1, node);
-                    pointer.setParent(node);
-                    return node;
-                }
-            }
-            // left recursion with simple rule to reduce
-            return pointer.getParent();
         }
         // concat type
         for (let i = 0; i < concat.length; i++) {
@@ -438,6 +448,7 @@ class Law {
         console.debug("++++++++++++++++++++++")
         console.debug("Build template failed:");
         console.debug("··node: " + this.parser.pointer.getType());
+        console.debug("··uid: " + this.parser.pointer.getUid());
         console.debug("··law: " + this.getSignature());
         console.debug("····grammar(items): ");
         this.items.forEach(arr => {console.debug("      " + arr.join(", "))});
@@ -487,52 +498,6 @@ class Law {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // ************************************* 5. Parser definition *************************************
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-class LawNode {
-    // @ts-ignore
-    static root: LawNode;
-    private static _nodes: Map<string, LawNode> = new Map<string, LawNode>();
-
-    private _name: string;
-    private _parent: LawNode;
-
-    private constructor(name: string, parent: LawNode = null) {
-        this._name = name;
-        this._parent = parent;
-    }
-
-    static add(name: string, parentName: string) {
-        if (!LawNode._nodes.has(parentName)) {
-            LawNode._nodes.set(parentName, new LawNode(parentName));
-        }
-        if (LawNode._nodes.has(name)) {
-            throw new GrammarError("repeat LawNode! " + name);
-        }
-        LawNode._nodes.set(name, new LawNode(name, LawNode._nodes.get(parentName)));
-        // if (parentName === null) {
-        //     LawNode._nodes.clear();
-        //     let lawNode = new LawNode(name, null);
-        //     LawNode.root = lawNode;
-        //     LawNode._nodes.set(name, lawNode);
-        //     return;
-        // }
-        // if (!LawNode._nodes.has(parentName)) {
-        //     throw new GrammarError("cannot find parent law: " + parentName + ", for " + name);
-        // }
-        // LawNode._nodes.set(name, new LawNode(name, LawNode._nodes.get(parentName)));
-    }
-
-    static getChain(name: string): Array<string> {
-        let _r: Array<string> = [];
-        if (LawNode._nodes.has(name)) {
-            let lawNode: LawNode = LawNode._nodes.get(name)._parent;
-            while (lawNode !== null) {
-                _r.push(lawNode._name);
-                lawNode = lawNode._parent;
-            }
-        }
-        return _r;
-    }
-}
 /**
  * {@code Parser} provides all functions of parsing grammar.
  * First, you should create a lexer and a parser by passing the related grammar rules context.
@@ -545,7 +510,7 @@ class Parser {
     // @ts-ignore
     private signSeq : Set<string>;
     private root    : TreeNode;
-            pointer : TreeNode;
+    /* + */ pointer : TreeNode;
     private factory : TreeNodeFactory;
     private walker  : Walker;
     private deepest : number = 0;
@@ -766,18 +731,27 @@ class Parser {
             this.pointer.setTemplate(this.pointer.getLaw().buildingTemplate(token));
             console.debug("Node template init result:");
             console.debug("··node: " + this.pointer.getType());
+            console.debug("··uid: " + this.pointer.getUid());
             console.debug("··template: " + this.pointer.getTemplate().join(", "));
+            console.debug("··children: " + this.pointer.getChildren().map(node =>
+                (node.getText() === null || node.getText() === "") ? "·" : node.getText()).join(", "));
             console.debug("··next token: " + token.getText() + "(" + token.getType() + ")");
         } else if (this.pointer.getChildSize() === this.pointer.getTemplate().length) {
             console.debug("[>>] Reduce tree(before law take over):");
             console.debug("··node: " + this.pointer.getType());
+            console.debug("··uid: " + this.pointer.getUid());
             console.debug("··template: " + this.pointer.getTemplate().join(", "));
+            console.debug("··children: " + this.pointer.getChildren().map(node =>
+                (node.getText() === null || node.getText() === "") ? "·" : node.getText()).join(", "));
             console.debug("··next token: " + token.getText() + "(" + token.getType() + ")");
             if (this.isOver() && token.getType() === "EOF") return;
             this.pointer = this.pointer.getLaw().takeOver(this.factory, this.pointer, token);
             console.debug("[<<] Reduce tree(after):");
             console.debug("··node: " + this.pointer.getType());
+            console.debug("··uid: " + this.pointer.getUid());
             console.debug("··template: " + this.pointer.getTemplate().join(", "));
+            console.debug("··children: " + this.pointer.getChildren().map(node =>
+                (node.getText() === null || node.getText() === "") ? "·" : node.getText()).join(", "));
             this.buildTree(token);
             return;
         }
@@ -792,8 +766,10 @@ class Parser {
         } else {
             console.debug("Normal logic error:");
             console.debug("··node: " + this.pointer.getType());
+            console.debug("··uid: " + this.pointer.getUid());
             console.debug("··template: " + this.pointer.getTemplate().join(", "));
-            console.debug("··children: " + this.pointer.getChildSize());
+            console.debug("··children: " + this.pointer.getChildren().map(node =>
+                (node.getText() === null || node.getText() === "") ? "·" : node.getText()).join(", "));
             console.debug("··expect: " + expect);
             throw new GrammarError(
                 "unexpected token \"" + token.getText() + "\"(" + token.getType() +

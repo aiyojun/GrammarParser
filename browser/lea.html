@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <script src="https://cdn.staticfile.org/echarts/5.2.2/echarts.min.js"></script>
-    <script src="lea.js"></script>
     <script src="jparse.js"></script>
     <title>GrammarParser</title>
 </head>
 <body style="width: 100%; height: 100%;">
 <div id="treeChart" style="width: 100%; height: 100%;"></div>
-<label for="grammar">Grammar</label>
+<button onclick="main()">重建语法树</button>
 <br>
-<div id="str" style="display: none;">
+<label for="str">main.lea</label>
+<br>
+<textarea id="str" cols="150" rows="40" spellcheck="false">
     import os;
     import sys;
 
@@ -29,11 +30,16 @@
             s = makeName(x);
             Main.method01();
             1 + 32;
+            clazz.method()[12];
             add(s, x2, x3, 3+ x4);
         }
     }
-</div>
-<textarea id="grammar" cols="150" rows="100" spellcheck="false">
+
+</textarea>
+<br>
+<label for="grammar">Grammar</label>
+<br>
+<textarea id="grammar" cols="150" rows="50" spellcheck="false">
  root
     : start
     ;
@@ -90,19 +96,19 @@ codeDefine
     ;
 
 codeImplement
-    : rv SEMI
+    : execution SEMI
     | VAR IDENTIFIER COLON IDENTIFIER SEMI
-    | VAR IDENTIFIER COLON IDENTIFIER EQ rv SEMI
+    | VAR IDENTIFIER COLON IDENTIFIER EQ execution SEMI
     | VAL IDENTIFIER COLON IDENTIFIER SEMI
-    | VAL IDENTIFIER COLON IDENTIFIER EQ rv SEMI
+    | VAL IDENTIFIER COLON IDENTIFIER EQ execution SEMI
+    ;
+
+execution
+    : rv
+    | rv EQ rv
     ;
 
 rv
-    : rvTripleValue
-    | rvTripleValue EQ rvTripleValue
-    ;
-
-rvTripleValue
     : rvOrValue QM rvOrValue COLON rvOrValue
     | rvOrValue
     ;
@@ -131,34 +137,22 @@ rvMulDivValue
     ;
 
 rvNotValue
-    : NOT rvValue
-    | rvValue
+    : NOT rvInvokingValue
+    | rvInvokingValue
     ;
 
-rvValue
-    : rvArrayValue
-    | rvBasicValue
+rvInvokingValue
+    : rvInvokingValue LSB rv RSB
+    | rvInvokingValue LP RP
+    | rvInvokingValue LP argsList RP
+    | rvInvokingValue DOT rvAtomValue
+    | rvAtomValue
+    ;
+
+rvAtomValue
+    : IDENTIFIER
+    | NUMBER
     | LP rv RP
-    ;
-
-rvArrayValue
-    : rvArrayValue LSB rv RSB
-    | rvAccessing
-    ;
-
-rvAccessing
-    : rvAccessing DOT rvInvoking
-    | rvInvoking
-    ;
-
-rvInvoking
-    : rvInvoking LP RP
-    | rvInvoking LP argsList RP
-    | IDENTIFIER
-    ;
-
-rvBasicValue
-    : NUMBER
     ;
 
 argsList
@@ -174,27 +168,47 @@ arg
     let tree;
     function main() {
         console.info(">> parser running...");
-        let strFromHtml = document.getElementById('str').innerText;
+        let strFromHtml = document.getElementById('str').value;
         let grammarFromHtml = document.getElementById('grammar').value;
         console.info(grammarFromHtml);
         // let str     = "show xxx when a = 12 and (b != -9.09 or c < -74) or (d = 43.00 and e != \"hello \\\"oh\")";
-        // let words   = "skip: ^[ ]\n" +
-        //     "FIELD: ^[a-zA-Z_][a-zA-Z0-9_]*\n" +
-        //     "SHOW: ^(show|SHOW)\n" +
-        //     "WHEN: ^(when|WHEN)\n" +
-        //     "AND: ^(and|AND)\n" +
-        //     "OR: ^(or|OR)\n" +
-        //     "LP: ^\\(\n" +
-        //     "RP: ^\\)\n" +
-        //     "OP: ^(=|!=|>=|>|<=|<)\n" +
-        //     "VALUE: ^(((-)?([0-9]+\\.)?[0-9]+)|('((\\\\')|[^'])*')|(\"((\\\\\")|[^\"])*\"))";
+        let words   = "skip: ^[ \\n]\n" +
+            "IDENTIFIER: ^[a-zA-Z_][a-zA-Z0-9_]*\n" +
+            "NUMBER: ^(((-)?([0-9]+\\.)?[0-9]+)|('((\\\\')|[^'])*')|(\"((\\\\\")|[^\"])*\"))\n" +
+            "IMPORT: ^(import)\n" +
+            "DEF: ^(def)\n" +
+            "CLASS: ^(class)\n" +
+            "PRIVATE: ^(private)\n" +
+            "VAL: ^(val)\n" +
+            "VAR: ^(var)\n" +
+            "OR: ^(\\|\\|)\n" +
+            "AND: ^(&&)\n" +
+            "EQ: ^(=)\n" +
+            "COMMA: ^(,)\n" +
+            "SEMI: ^;\n" +
+            "COLON: ^:\n" +
+            "LB: ^\\{\n" +
+            "RB: ^\\}\n" +
+            "LP: ^\\(\n" +
+            "RP: ^\\)\n" +
+            "LSB: ^\\[\n" +
+            "RSB: ^\\]\n" +
+            "QM: ^\\?\n" +
+            "DOT: ^\\.\n" +
+            "NOT: ^\\!\n" +
+            "PLUS: ^\\+\n" +
+            "SUB: ^\\-\n" +
+            "MUL: ^\\*\n" +
+            "DIV: ^\\/\n" +
+            "MOD: ^\\%\n" +
+            "";
         // let grammar = "start: SHOW FIELD WHEN expr;\n" +
         //     "expr: expr OR andExpr | andExpr;\n" +
         //     "andExpr: andExpr AND atom | atom;\n" +
         //     "atom: LP expr RP | FIELD OP VALUE;";
         let lexer   = Grammar.lexer(words);
         // let
-            tree    = Grammar.parser(grammarFromHtml);
+        tree    = Grammar.parser(grammarFromHtml);
         tree.printGrammar();
         try {
             tree.parse(strFromHtml, "start", lexer);
@@ -259,7 +273,7 @@ arg
                         emphasis: {
                             focus: 'descendant'
                         },
-                        initialTreeDepth: 20,
+                        initialTreeDepth: depth,
                         expandAndCollapse: true,
                         animationDuration: 550,
                         animationDurationUpdate: 750
