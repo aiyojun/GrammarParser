@@ -257,14 +257,14 @@ class Walker {
  * to build the ASTree! You can explore the inner logic if you are interested in it!
  */
 class Law {
-    private static uidGen: number = 0;
-    private parser: Parser;
-    private readonly uid: number;
-    private readonly signature: string;
-    private readonly leftLoop: Array<number>;
-    private readonly items: Array<Array<string>>;
+    private static uidGen      : number = 0;
+    private /*  */ parser      : Parser;
+    private readonly uid       : number;
+    private readonly signature : string;
+    private readonly leftLoop  : Array<number>;
+    private readonly items     : Array<Array<string>>;
     // @ts-ignore
-    private indexedHeaders: Map<string, Array<number>>;
+    private indexedHeaders     : Map<string, Array<number>>;
     /**
      * The method to create a law by parsing strings of grammar rule.
      */
@@ -515,8 +515,6 @@ class Parser {
     private walker  : Walker;
     private deepest : number = 0;
     private records : Array<Token> = [];
-    // private disable : Set<string>;
-    // private fromBeg : Set<string>;
     getDepth(): number {return this.deepest;}
     /**
      * Provide a entry.
@@ -527,51 +525,19 @@ class Parser {
         _r.grammar = new Map<string, Law>();
         // @ts-ignore
         _r.signSeq = new Set<string>();
-        // _r.fromBeg = new Set<string>();
-        // _r.disable = new Set<string>();
-        // let index = 0;
         context.replace("\n", "")
             .split(";")
             .map(every => every.replace("\n", "").replace("\t", "").trim())
             .filter(every => every !== "")
             .forEach(every => {
                 let law = Law.parse(every).setParser(_r);
-                // if (index === 0)
-                //     LawNode.add(law.getSignature());
-                // index++;
                 _r.grammar.set(law.getSignature(), law);
                 _r.signSeq.add(law.getSignature());
-                // law.getLeaders().forEach(
-                //     leader => {
-                //         _r.fromBeg.add(law.getSignature() + "." + leader);
-                //         _r.disable.add(leader + "." + law.getSignature());
-                //         LawNode.add(leader, law.getSignature());
-                //         LawNode.getChain(leader).forEach(trace => {
-                //             _r.disable.add(leader + "." + trace)
-                //         });
-                //     });
             });
         _r.factory = new TreeNodeFactory().setGrammar(_r.grammar);
         _r.walker  = new Walker();
         return _r;
     }
-    // static hasChain(sign: string, container: Set<string>): string | null {
-    //     for (let every of container) {
-    //         let everySigns = every.split(".");
-    //         if (sign === everySigns[0]) {
-    //             return everySigns[1];
-    //         }
-    //     }
-    //     return null;
-    // }
-    // static getChain(sign: string, container: Set<string>) {
-    //     let _r: Array<string> = [];
-    //     let every: string | null;
-    //     while ((every = Parser.hasChain(sign, container)) !== null) {
-    //         _r.push(every);
-    //     }
-    //     return _r;
-    // }
     /**
      * You know: hide!
      */
@@ -604,27 +570,11 @@ class Parser {
             _r.add(signature);
             return _r;
         }
-        // @ts-ignore
-        // let disabled: Set<string> = new Set<string>();
-        // console.debug(signature + " \tget leaders: " + this.grammar.get(signature).getLeaders().join(", "))
         this.grammar.get(signature).getLeaders().forEach(leader => {
-            // let hash = signature + "." + leader;
-            // if (this.disable.has(hash)) {
-            //     throw new GrammarError("grammar error, invalid cycle rule: " + hash);
-            // }
-            // if (this.signSeq.has(leader) && disabled.has(hash)) {
-            //     console.info("disabled cycle rules:\n");
-            //     for (let k of disabled) {
-            //         console.info("  " + k);
-            //     }
-            //     throw new GrammarError("grammar error, invalid cycle rule: " + hash);
-            // } else {
-            //     disabled.add(hash);
-            // }
+            // TODO: !!!cycle check!!!
             if (this.signSeq.has(leader)) {
                 this.expect(leader).forEach(every => _r.add(every));
             } else {
-                // console.debug("  signature: " + signature + "; header: " + leader);
                 _r.add(leader);
             }
         });
