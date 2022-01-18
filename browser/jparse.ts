@@ -768,7 +768,7 @@ class TreeNodeFactory {
      */
     leaf(p: TreeNode, token: Token): TreeNode {
         return new TreeNode()
-            .setUid(++TreeNodeFactory.uidGen)
+            .setUid(TreeNodeFactory.uidGen++)
             .setParent(p)
             .setText(token.getText())
             .setType(token.getType())
