@@ -8,6 +8,7 @@ class Main {
 
     def main() {
         var x: int = 12;
+        X = apply<>()
         var s: string = "text";
         s = "another text";
         s = "text_" + x;
