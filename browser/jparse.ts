@@ -89,8 +89,8 @@ class RegRule {
      * Hide constructor of the class.
      */
     private constructor(type: string, re: RegExp) {
-        this._uid = RegRule.uidGen++;
-        this._reg = re;
+        this._reg  = re;
+        this._uid  = RegRule.uidGen++;
         this._type = type;
     }
     /**
