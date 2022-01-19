@@ -1,14 +1,34 @@
 import os;
 import sys;
+import self.functor.cyber;
+
+trait Functor {
+    def apply();
+    def apply2() {}
+}
+
+class Adder extends Functor {
+    def apply() = {}
+}
 
 class Main {
     val uid: int;
 
     private val type: string;
 
+    def closure0 {}
+    def closure1: void {}
+    def closure2(): void {}
+    def closure3() {}
+    def closure4(arg0: string, arg1: int, arg2: Type) {}
+    def closure5(func: () => void) {}
+    def closure6(func: int => void) {}
+
     def main() {
         var x: int = 12;
-        X = apply<>()
+        x = apply<>();
+        x = apply<string>();
+        x = apply<number, 12>();
         var s: string = "text";
         s = "another text";
         s = "text_" + x;
@@ -16,6 +36,7 @@ class Main {
         s = makeName(x);
         Main.method01();
         1 + 32;
+        clazz.method()[12];
         add(s, x2, x3, 3+ x4);
     }
 }

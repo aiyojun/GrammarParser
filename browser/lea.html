@@ -15,11 +15,29 @@
 <textarea id="str" cols="150" rows="40" spellcheck="false">
 import os;
 import sys;
+import self.functor.cyber;
+
+trait Functor {
+    def apply();
+    def apply2() {}
+}
+
+class Adder extends Functor {
+    def apply() = {}
+}
 
 class Main {
     val uid: int;
 
     private val type: string;
+
+    def closure0 {}
+    def closure1: void {}
+    def closure2(): void {}
+    def closure3() {}
+    def closure4(arg0: string, arg1: int, arg2: Type) {}
+    def closure5(func: () => void) {}
+    def closure6(func: int => void) {}
 
     def main() {
         var x: int = 12;
@@ -49,23 +67,70 @@ class Main {
 
 start
     : moduleDeclare
-    | moduleDeclare classesDefine
-    | classesDefine
+    | moduleDeclare contextDefine
+    | contextDefine
+    ;
+
+identifierRef
+    : identifierRef DOT IDENTIFIER
+    | IDENTIFIER
     ;
 
 moduleDeclare
-    : moduleDeclare IMPORT IDENTIFIER SEMI
-    | IMPORT IDENTIFIER SEMI
+    : moduleDeclare IMPORT identifierRef SEMI
+    | IMPORT identifierRef SEMI
     ;
 
-    classesDefine
-    : classesDefine classDefine
-    | classDefine
+contextDefine
+    : contextDefine contextAtomDefine
+    | contextAtomDefine
+    ;
+
+contextAtomDefine
+    : classDefine
+    | traitDefine
+    ;
+
+traitDefine
+    : TRAIT IDENTIFIER LB RB
+    | TRAIT IDENTIFIER LB traitMembers RB
+    ;
+
+traitMembers
+    : traitMembers traitMemberDefine
+    | traitMemberDefine
+    ;
+
+traitMemberDefine
+    : variableDefine
+    | traitMethodDefine
+    ;
+
+traitMethodDefine
+    : DEF IDENTIFIER SEMI
+    | DEF IDENTIFIER COLON typeDeclare SEMI
+    | DEF IDENTIFIER LP RP SEMI
+    | DEF IDENTIFIER LP RP COLON typeDeclare SEMI
+    | DEF IDENTIFIER LP argsTypeList RP COLON typeDeclare SEMI
+    | DEF IDENTIFIER LP argsTypeList RP SEMI
+    | DEF IDENTIFIER returnValueGiven
+    | DEF IDENTIFIER COLON typeDeclare returnValueGiven
+    | DEF IDENTIFIER LP RP returnValueGiven
+    | DEF IDENTIFIER LP RP COLON typeDeclare returnValueGiven
+    | DEF IDENTIFIER LP argsTypeList RP COLON typeDeclare returnValueGiven
+    | DEF IDENTIFIER LP argsTypeList RP returnValueGiven
     ;
 
 classDefine
     : CLASS IDENTIFIER LB RB
     | CLASS IDENTIFIER LB classMemberDefine RB
+    | CLASS IDENTIFIER EXTENDS inheritDeclare LB RB
+    | CLASS IDENTIFIER EXTENDS inheritDeclare LB classMemberDefine RB
+    ;
+
+inheritDeclare
+    : inheritDeclare COMMA identifierRef
+    | identifierRef
     ;
 
 classMemberDefine
@@ -76,6 +141,7 @@ classMemberDefine
 memberDefine
     : limitedMemberDefine
     | PRIVATE limitedMemberDefine
+    | PROTECTED limitedMemberDefine
     ;
 
 limitedMemberDefine
@@ -84,13 +150,54 @@ limitedMemberDefine
     ;
 
 methodDefine
-    : DEF IDENTIFIER LP RP LB RB
-    | DEF IDENTIFIER LP RP LB codeDefine RB
+    : DEF IDENTIFIER returnValueGiven
+    | DEF IDENTIFIER COLON typeDeclare returnValueGiven
+    | DEF IDENTIFIER LP RP returnValueGiven
+    | DEF IDENTIFIER LP RP COLON typeDeclare returnValueGiven
+    | DEF IDENTIFIER LP argsTypeList RP COLON typeDeclare returnValueGiven
+    | DEF IDENTIFIER LP argsTypeList RP returnValueGiven
+    ;
+
+argsTypeList
+    : argsTypeList COMMA IDENTIFIER COLON typeDeclare
+    | IDENTIFIER COLON typeDeclare
+    ;
+
+typeDeclare
+    : allType
+    | allType ARROW allType
+    | LP RP ARROW allType
+    | LP typeList RP ARROW allType
+    ;
+
+allType
+    : basicType
+    | identifierRef
+    ;
+
+basicType
+    : VOID
+    | CHAR
+    | BOOLEAN
+    | INT
+    | LONG
+    | FLOAT
+    | DOUBLE
+    | STRING
+    ;
+
+typeList
+    : typeList COMMA typeDeclare
+    | typeDeclare
     ;
 
 variableDefine
-    : VAL IDENTIFIER COLON IDENTIFIER SEMI
-    | VAR IDENTIFIER COLON IDENTIFIER SEMI
+    : VAL IDENTIFIER COLON typeDeclare SEMI
+    | VAL IDENTIFIER COLON typeDeclare valueGiven
+    | VAL IDENTIFIER valueGiven
+    | VAR IDENTIFIER COLON typeDeclare SEMI
+    | VAR IDENTIFIER COLON typeDeclare valueGiven
+    | VAR IDENTIFIER valueGiven
     ;
 
 codeDefine
@@ -98,12 +205,26 @@ codeDefine
     | codeImplement
     ;
 
+returnValueGiven
+    : valueGiven
+    | codeBlock
+    ;
+
+valueGiven
+    : EQ rv SEMI
+    | EQ codeBlock
+    ;
+
+codeBlock
+    : LB RB
+    | LB codeDefine RB
+    ;
+
 codeImplement
     : execution SEMI
-    | VAR IDENTIFIER COLON IDENTIFIER SEMI
-    | VAR IDENTIFIER COLON IDENTIFIER EQ execution SEMI
-    | VAL IDENTIFIER COLON IDENTIFIER SEMI
-    | VAL IDENTIFIER COLON IDENTIFIER EQ execution SEMI
+    | variableDefine
+    | RETURN SEMI
+    | RETURN rv SEMI
     ;
 
 execution
@@ -147,16 +268,26 @@ rvNotValue
 rvInvokingValue
     : rvInvokingValue LSB rv RSB
     | rvInvokingValue LT GT
-    | rvInvokingValue LT argsList GT
+    | rvInvokingValue LT templateArgsList GT
     | rvInvokingValue LP RP
     | rvInvokingValue LP argsList RP
     | rvInvokingValue DOT rvAtomValue
     | rvAtomValue
     ;
 
+templateArgsList
+    : templateArgsList COMMA templateArg
+    | templateArg
+    ;
+
+templateArg
+    : allType
+    | VALUE
+    ;
+
 rvAtomValue
     : IDENTIFIER
-    | NUMBER
+    | VALUE
     | LP rv RP
     ;
 
@@ -179,16 +310,30 @@ arg
         // let str     = "show xxx when a = 12 and (b != -9.09 or c < -74) or (d = 43.00 and e != \"hello \\\"oh\")";
         let words   = "skip: ^[ \\n]\n" +
             "IDENTIFIER: ^[a-zA-Z_][a-zA-Z0-9_]*\n" +
-            "NUMBER: ^(((-)?([0-9]+\\.)?[0-9]+)|('((\\\\')|[^'])*')|(\"((\\\\\")|[^\"])*\"))\n" +
+            "VALUE: ^(((-)?([0-9]+\\.)?[0-9]+)|('((\\\\')|[^'])*')|(\"((\\\\\")|[^\"])*\"))\n" +
             "IMPORT: ^(import)\n" +
             "DEF: ^(def)\n" +
             "CLASS: ^(class)\n" +
+            "TRAIT: ^(trait)\n" +
+            "EXTENDS: ^(extends)\n" +
             "PRIVATE: ^(private)\n" +
+            "PROTECTED: ^(protected)\n" +
+            "RETURN: ^(return)\n" +
             "VAL: ^(val)\n" +
             "VAR: ^(var)\n" +
+            "NULL: ^(null)\n" +
+            "VOID: ^(void)\n" +
+            "CHAR: ^(char)\n" +
+            "INT: ^(int)\n" +
+            "LONG: ^(long)\n" +
+            "FLOAT: ^(float)\n" +
+            "DOUBLE: ^(double)\n" +
+            "BOOLEAN: ^(boolean)\n" +
+            "STRING: ^(string)\n" +
             "OR: ^(\\|\\|)\n" +
             "AND: ^(&&)\n" +
             "EQ: ^(=)\n" +
+            "ARROW: ^(=>)\n" +
             "LT: ^(<)\n" +
             "GT: ^(>)\n" +
             "COMMA: ^(,)\n" +

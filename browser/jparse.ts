@@ -433,15 +433,24 @@ class Law {
             }
         }
         // concat type
+        let indicesAccept: Array<number> = [];
         for (let i = 0; i < concat.length; i++) {
             if (this.parser.expect(this.items[concat[i]][pointer.getTemplate().length])
                 .has(token.getType())) {
-                pointer.setTemplate(this.items[concat[i]]);
-                return pointer;
+                indicesAccept.push(concat[i]);
             }
         }
+        if (indicesAccept.length === 1) {
+            pointer.setTemplate(this.items[indicesAccept[0]]);
+            return pointer;
+        } else if (indicesAccept.length > 1) {
+            let sharedPartition = this.shared(indicesAccept);
+            pointer.setTemplate(sharedPartition);
+            return pointer;
+        }
         if (sameAs.length === 0) {
-            throw new GrammarError("grammar error, " + token.getText() + "; after: " + this.parser.getRecord());
+            throw new GrammarError("grammar error, " + token.getText()
+                + "; after: " + this.parser.getRecord());
         }
         // reducing type
         return pointer.getParent();
@@ -604,7 +613,7 @@ class Parser {
     }
 
     private record(token: Token) {
-        let recordSize = 5;
+        let recordSize = 10;
         this.records.push(token);
         if (this.records.length > recordSize) {
             let numberToRemove = this.records.length - recordSize;
