@@ -1,8 +1,5 @@
 package com.jpro;
 
-import java.util.Arrays;
-import java.util.List;
-
 public enum TokenType {
     V_STR("v_str"),
     V_CHAR("v_char"),
@@ -68,7 +65,12 @@ public enum TokenType {
     L_SQUARE("left_square"),
     R_SQUARE("right_square"),
     ID("id"),
-    COMMENT("comment");
+    COMMENT("comment"),
+
+    OPERATOR("operator"),
+    PAREN("paren"),
+    ARG("arg"),
+    ;
 
     private final String sign;
 
