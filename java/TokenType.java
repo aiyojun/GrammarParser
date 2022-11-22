@@ -70,6 +70,12 @@ public enum TokenType {
     OPERATOR("operator"),
     PAREN("paren"),
     ARG("arg"),
+
+    PROGRAM("program"),
+    IMPORT_DECLARATION("import"),
+    PACKAGE_SPECIFIER("package_specifier"),
+    CLASS_DECLARATION("class"),
+    IDENTIFIER("identifier"),
     ;
 
     private final String sign;

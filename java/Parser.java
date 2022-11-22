@@ -4,6 +4,24 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Parser {
+    /* A parser implementation need the following elements:
+     *   1. construct node, eg: expr ::= ...
+     *   2. provide optional branches, eg: funcDlc ::= DEF ID (COLON TYPE_ID)?
+     *   3. left recursion, eg: expr ::= expr OP rvalue
+     *
+     * To deal with these problems, the below solutions provided:
+     *
+     * Todo:
+     *   1. merge nodes
+     *   2. sequence check, then enter certain branch, and the others enter expected tokens validation
+     *   3. use 'while' loop to absorb multiple loop tokens
+     * */
+
+    // check token sequence
+    public void validate(/* seq, TokenType... */) {
+        // Todo: if meet unexpected token, throw an exception.
+    }
+
     public record MergeTree(Node<Token> node, int from) {}
 
     interface Functor { MergeTree apply(List<Token> seq, int from); }
@@ -11,22 +29,26 @@ public class Parser {
      * Normal calculator!
      */
     public static void main(String[] args) {
-        List<Token> tokens =
-                new Tokenizer().lex(Helper.readFile("/opt/jpro/Grammar/expr.lea")).stream()
-                        .filter(p ->
-                                p.value() != TokenType.COMMENT &&
-                                        p.value() != TokenType.NEWLINE &&
-                                        p.value() != TokenType.WHITESPACE
-                        )
-                        .map(p -> Pair.build(p.value() == TokenType.V_STR
-                                ? p.key().substring(1, p.key().length() - 1) : p.key(), p.value()))
-                        .map(p -> Token.build(p.value(), p.key())).toList();
-        tokens.forEach(token -> System.out.printf("%s ", token.getType()));
-        System.out.println();
+        try {
+            List<Token> tokens =
+                    new Tokenizer().lex(Helper.readFile("/opt/jpro/Grammar/expr.lea")).stream()
+                            .filter(p ->
+                                    p.value() != TokenType.COMMENT &&
+    //                                        p.value() != TokenType.NEWLINE &&
+                                            p.value() != TokenType.WHITESPACE
+                            )
+                            .map(p -> Pair.build(p.value() == TokenType.V_STR
+                                    ? p.key().substring(1, p.key().length() - 1) : p.key(), p.value()))
+                            .map(p -> Token.build(p.value(), p.key())).toList();
+            tokens.forEach(token -> System.out.printf("%s ", token.getType()));
+            System.out.println();
 
-        MergeTree mergeTree = SimpleExpressionParser.composeTop(tokens, 0);
-        System.out.println(Helper.jsonTree(Helper.adjust(mergeTree.node), 0));
-        System.out.println("stop at : " + mergeTree.from);
+            MergeTree mergeTree = SimpleExpressionParser.composeTop(tokens, 0);
+            System.out.println(Helper.jsonTree(Helper.adjust(mergeTree.node), 0));
+            System.out.println("stop at : " + mergeTree.from);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
     }
 
 
@@ -35,6 +57,25 @@ public class Parser {
         public static MergeTree composeTop(List<Token> seq, int from) {
             return composeOr(seq, from);
         }
+
+
+
+        public static MergeTree composeProgram(List<Token> seq, int from) {
+
+            return null;
+        }
+
+        public static MergeTree composeImport(List<Token> seq, int from) {
+            Node<Token> importOneNode = Helper.buildNode(seq.get(from));
+
+
+            return null;
+        }
+
+        public static MergeTree composeClass(List<Token> seq, int from) { return null; }
+        public static MergeTree composeMember(List<Token> seq, int from) { return null; }
+        public static MergeTree composeMethod(List<Token> seq, int from) { return null; }
+        public static MergeTree composeMemberVariable(List<Token> seq, int from) { return null; }
 
         public static MergeTree generalCompose(List<TokenType> expected, Functor nextComposer, List<Token> seq, int from) {
             MergeTree beginner = nextComposer.apply(seq, from);
@@ -107,23 +148,16 @@ public class Parser {
         }
 
         public static MergeTree composeAccessArray(List<Token> seq, int from) {
-//            Node<Token> self = Helper.buildNode(TokenType.OPERATOR, "accessArray");
             MergeTree mergeTree = composeTop(seq, from + 1);
-//            mergeTree.node.setParent(self);
-//            self.addChild(mergeTree.node);
             if (seq.get(mergeTree.from).getType() != TokenType.R_SQUARE)
                 throw new RuntimeException("Unexpected token : " + seq.get(mergeTree.from).getText() + "; expect : ]");
-//            return new MergeTree(self, mergeTree.from + 1);
             return new MergeTree(mergeTree.node, mergeTree.from + 1);
         }
 
         public static MergeTree composeAccessMember(List<Token> seq, int from) {
-//            Node<Token> self = Helper.buildNode(TokenType.OPERATOR, "accessMember");
             if (seq.get(from + 1).getType() != TokenType.ID)
                 throw new RuntimeException("Unexpected token : " + seq.get(from + 1).getText() + "; expect : member ID");
             Node<Token> member = Helper.buildNode(seq.get(from + 1));
-//            member.setParent(self);
-//            self.addChild(member);
             return new MergeTree(member, from + 2);
         }
 
@@ -131,13 +165,7 @@ public class Parser {
             List<TokenType> expected = Arrays.asList(TokenType.F_DOT, TokenType.L_PAREN, TokenType.L_SQUARE);
             if (!expected.contains(seq.get(from).getType())) return from;
             MergeTree mergeTree;
-//            int counter = 0;
             do {
-//                counter++;
-//                if (counter > 10) {
-//                    System.out.println("counter > 10!!!");
-//                    System.exit(1);
-//                }
                 mergeTree = switch (seq.get(from).getType()) {
                     case F_DOT -> composeAccessMember(seq, from);
                     case L_PAREN -> composeCall(seq, from);
@@ -154,9 +182,6 @@ public class Parser {
                 mergeTree.node.setParent(mid);
                 firstNode.addChild(mid);
                 firstNode = mid;
-//                mergeTree.node.setParent(firstNode);
-//                firstNode.addChild(mergeTree.node);
-//                firstNode = mergeTree.node;
                 from = mergeTree.from;
             } while (expected.contains(seq.get(mergeTree.from).getType()));
             return mergeTree.from;
@@ -174,44 +199,9 @@ public class Parser {
                         + "; " + String.join(", ", expected.stream().map(TokenType::toString).toList()));
             List<TokenType> expectedTail = Arrays.asList(TokenType.F_DOT, TokenType.L_PAREN, TokenType.L_SQUARE);
             if (from + 1 < seq.size() && seq.get(from).getType() == TokenType.ID && expectedTail.contains(seq.get(from + 1).getType())) {
-//                String op = switch (seq.get(from + 1).getType()) {
-//                    case L_PAREN -> "call";
-//                    case L_SQUARE -> "arrayAccess";
-//                    case F_DOT -> "memberAccess";
-//                    default -> throw new RuntimeException("");
-//                };
-//                Node<Token> self = Helper.buildNode(TokenType.OPERATOR, op);
-//                Node<Token> self = Helper.buildNode(TokenType.OPERATOR, "tail");
                 Node<Token> func = Helper.buildNode(seq.get(from));
-//                func.setParent(self);
-//                self.addChild(func);
-//                return new MergeTree(self, composeTailIfNecessary(self, seq, from + 1));
                 return new MergeTree(func, composeTailIfNecessary(func, seq, from + 1));
             }
-//            if (from + 1 < seq.size() && seq.get(from).getType() == TokenType.ID && seq.get(from + 1).getType() == TokenType.L_PAREN) {
-//                Node<Token> self = Helper.buildNode(TokenType.OPERATOR, "call");
-//                Node<Token> func = Helper.buildNode(seq.get(from));
-//                func.setParent(self);
-//                self.addChild(func);
-//                return new MergeTree(self, composeTailIfNecessary(self, seq, from + 1));
-//            }
-//            if (from + 1 < seq.size() && seq.get(from).getType() == TokenType.ID && seq.get(from + 1).getType() == TokenType.L_SQUARE) {
-//                Node<Token> self = Helper.buildNode(TokenType.OPERATOR, "arrayAccess");
-//                Node<Token> func = Helper.buildNode(seq.get(from));
-//                func.setParent(self);
-//                self.addChild(func);
-//                return new MergeTree(self, composeTailIfNecessary(self, seq, from + 1));
-//            }
-//            if (from + 1 < seq.size() && seq.get(from).getType() == TokenType.ID && seq.get(from + 1).getType() == TokenType.F_DOT) {
-//                Node<Token> self = Helper.buildNode(TokenType.OPERATOR, "memberAccess");
-//                Node<Token> func = Helper.buildNode(seq.get(from));
-//                func.setParent(self);
-//                self.addChild(func);
-//                MergeTree callTree = composeAccessMember(seq, from + 1);
-//                self.addChild(callTree.node);
-//                callTree.node.setParent(self);
-//                return new MergeTree(self, callTree.from);
-//            }
             if (seq.get(from).getType() != TokenType.L_PAREN)
                 return new MergeTree(Helper.buildNode(seq.get(from)), from + 1);
             Node<Token> parenNode = Helper.buildNode(TokenType.PAREN, "()");
