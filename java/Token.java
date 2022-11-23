@@ -13,7 +13,11 @@ public class Token {
     private int lineNumber;
     private int lineStart;
 
+    public static Token build(TokenType tokenType, String text, int start, int end, int lineNumber, int lineStart)
+    { return new Token(tokenType, text, start, end, lineNumber, lineStart); }
     public static Token build(TokenType tokenType, String text) { return new Token(tokenType, text); }
+    private Token(TokenType tokenType, String text, int start, int end, int lineNumber, int lineStart)
+    { this.type = tokenType; this.text = text; this.start = start; this.end = end; this.lineNumber = lineNumber; this.lineStart = lineStart; }
     private Token(TokenType tokenType, String text) { this.type = tokenType; this.text = text; }
     public TokenType getType() { return type; }
     public void setType(TokenType type) { this.type = type; }
@@ -28,4 +32,16 @@ public class Token {
     public void setLineNumber(int lineNumber) { this.lineNumber = lineNumber; }
     public int getLineStart() { return lineStart; }
     public void setLineStart(int lineStart) { this.lineStart = lineStart; }
+
+    @Override
+    public String toString() {
+        return "Token{" +
+                "type=" + type +
+                ", text='" + (text.contains("\n") ? text.replace("\n", "") : text) + '\'' +
+                ", start=" + start +
+                ", end=" + end +
+                ", lineNumber=" + lineNumber +
+                ", lineStart=" + lineStart +
+                '}';
+    }
 }

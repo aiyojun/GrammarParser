@@ -13,7 +13,7 @@ public class Tokenizer {
     }
 
     static {
-        regexes.add(Pair.build(Pattern.compile("^[ \r\t]*"), TokenType.WHITESPACE));
+        regexes.add(Pair.build(Pattern.compile("^[ \t]*"), TokenType.WHITESPACE));
         regexes.add(Pair.build(Pattern.compile("^\n"), TokenType.NEWLINE));
         regexes.add(Pair.build(Pattern.compile("^\\{"), TokenType.L_BRACE));
         regexes.add(Pair.build(Pattern.compile("^}"), TokenType.R_BRACE));
@@ -77,11 +77,21 @@ public class Tokenizer {
         keywords.put("continue", TokenType.K_CONTINUE);
         keywords.put("break", TokenType.K_BREAK);
         keywords.put("while", TokenType.K_WHILE);
+        keywords.put("this", TokenType.K_THIS);
+        keywords.put("null", TokenType.K_NULL);
+        keywords.put("sync", TokenType.K_SYNC);
+        keywords.put("await", TokenType.K_AWAIT);
     }
 
-    public List<Pair<String, TokenType>> lex(String text) {
-        final List<Pair<String, TokenType>> tokens = new ArrayList<>(1024);
+    public List<Token> lex(String text) {
+        final List<Token> tokens = new ArrayList<>(1024);
         String rest = text;
+        int accumulate = 0;
+        int lineNumber = 0;
+        int numberOfLine = 0;
+
+        String tokenText;
+        TokenType tokenType;
         while (!rest.isEmpty()) {
             if (rest.charAt(0) == '"') {
                 boolean escape = false;
@@ -92,7 +102,11 @@ public class Tokenizer {
                         throw new RuntimeException("Unexpected \033[31;1mnewline in string\033[0m");
                     }
                     if (!escape && ch == '"') {
-                        tokens.add(Pair.build(rest.substring(0, index + 1), TokenType.V_STR));
+                        tokenText = rest.substring(0, index + 1);
+                        tokenType = TokenType.V_STR;
+                        tokens.add(Token.build(tokenType, tokenText, accumulate, accumulate + tokenText.length(), lineNumber, numberOfLine));
+                        numberOfLine += tokenText.length();
+                        accumulate += tokenText.length();
                         break;
                     }
                     escape = ch == '\\';
@@ -101,7 +115,15 @@ public class Tokenizer {
                 continue;
             }
             if (rest.startsWith("/*")) {
-                rest = rest.substring(rest.indexOf("*/") + 2);
+                int end = rest.indexOf("*/");
+                tokenText = rest.substring(0, end + 2);
+                tokenType = TokenType.COMMENT;
+                tokens.add(Token.build(tokenType, tokenText, accumulate, accumulate + tokenText.length(), lineNumber, numberOfLine));
+                String[] lines = tokenText.split("\n");
+                lineNumber += lines.length - 1;
+                numberOfLine = lines[lines.length - 1].length();
+                accumulate += tokenText.length();
+                rest = rest.substring(end + 2);
                 continue;
             }
             boolean reduced = false;
@@ -110,10 +132,21 @@ public class Tokenizer {
                 reduceLength = reduce(regex.key().matcher(rest));
                 if (reduceLength > 0) {
                     if (regex.value() == TokenType.ID && keywords.containsKey(rest.substring(0, reduceLength))) {
-                        tokens.add(Pair.build(rest.substring(0, reduceLength), keywords.get(rest.substring(0, reduceLength))));
+                        tokenText = rest.substring(0, reduceLength);
+                        tokenType = keywords.get(rest.substring(0, reduceLength));
+                        tokens.add(Token.build(tokenType, tokenText, accumulate, accumulate + tokenText.length(), lineNumber, numberOfLine));
                     } else {
-                        tokens.add(Pair.build(rest.substring(0, reduceLength), regex.value()));
+                        tokenText = rest.substring(0, reduceLength);
+                        tokenType = regex.value();
+                        tokens.add(Token.build(tokenType, tokenText, accumulate, accumulate + tokenText.length(), lineNumber, numberOfLine));
                     }
+                    if (regex.value() == TokenType.NEWLINE || regex.value() == TokenType.COMMENT) {
+                        lineNumber++;
+                        numberOfLine = 0;
+                    } else {
+                        numberOfLine += tokenText.length();
+                    }
+                    accumulate += reduceLength;
                     rest = rest.substring(reduceLength);
                     reduced = true;
                     break;
@@ -127,14 +160,15 @@ public class Tokenizer {
     }
 
     public static void main(String[] args) {
-        new Tokenizer().lex(Helper.readFile("/opt/Grammar/main.lea")).stream()
-                .filter(p ->
-                        p.value() != TokenType.COMMENT
-                                && p.value() != TokenType.NEWLINE
-                                && p.value() != TokenType.WHITESPACE
+        String context = Helper.readFile("/opt/jpro/Grammar/main.lea");
+        new Tokenizer().lex(context).stream()
+                .filter(token ->
+                        token.getType() != TokenType.WHITESPACE
+                                && token.getType() != TokenType.NEWLINE
+                                && token.getType() != TokenType.COMMENT
                 )
-                .forEach(stringTokenTypePair -> {
-                    System.out.print(stringTokenTypePair.value().toString() + " ");
+                .forEach(token -> {
+                    System.out.printf("%s %s%n", token, context.substring(token.getStart(), token.getEnd()));
                 });
     }
 

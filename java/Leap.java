@@ -10,13 +10,17 @@ public class Leap {
         try {
             List<Token> tokens =
                     new Tokenizer().lex(Helper.readFile("/opt/jpro/Grammar/main.lea")).stream()
-                            .filter(p ->
-                                    p.value() != TokenType.COMMENT &&
-                                            p.value() != TokenType.WHITESPACE
+                            .filter(token ->
+                                    token.getType() != TokenType.COMMENT &&
+                                            token.getType() != TokenType.WHITESPACE
                             )
-                            .map(p -> Pair.build(p.value() == TokenType.V_STR
-                                    ? p.key().substring(1, p.key().length() - 1) : p.key(), p.value()))
-                            .map(p -> Token.build(p.value(), p.key())).toList();
+                            .peek(token -> {
+                                if (token.getType() == TokenType.V_STR) {
+                                    token.setText(token.getText().substring(1, token.getText().length() - 1));
+                                }
+                            })
+//                            .map(token -> Token.build(token.getType(), token.getText()))
+                            .toList();
             tokens.forEach(token -> System.out.printf("%s ", token.getType()));
             System.out.println();
             Leap leap = new Leap();

@@ -1,5 +1,6 @@
 package com.jpro;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -16,6 +17,52 @@ public class Parser {
      *   2. sequence check, then enter certain branch, and the others enter expected tokens validation
      *   3. use 'while' loop to absorb multiple loop tokens
      * */
+//    public boolean matchWith(List<Token> ctx, int from, TokenType... seq) {
+//        if (seq.length == 0) return false;
+//        if (seq.length == 1) return ctx.get(from).getType() == seq[0];
+//        int j = from;
+//        for (TokenType tokenType : seq) {
+//            while (ctx.get(j).getType() == TokenType.F_SEMI
+//                    || ctx.get(j).getType() == TokenType.NEWLINE)
+//                j++;
+//            if (tokenType != ctx.get(j).getType())
+//                return false;
+//            j++;
+//        }
+//        return true;
+//    }
+//
+//    public boolean matchWithStrict(List<Token> ctx, int from, TokenType... seq) {
+//        if (seq.length == 0) return false;
+//        if (seq.length == 1) return ctx.get(from).getType() == seq[0];
+//        for (int i = 0; i < seq.length; i++) {
+//            if (seq[i] != ctx.get(i).getType())
+//                return false;
+//        }
+//        return true;
+//    }
+
+//    public List<Token> processNewline(List<Token> ctx) {
+//        List<Token> seq = new ArrayList<>(ctx.size());
+//        int len = ctx.size() - 1;
+//        int i = len;
+//        while (ctx.get(i).getType() == TokenType.NEWLINE || ctx.get(i).getType() == TokenType.F_SEMI) i--;
+//        len = i; i = 0;
+//        while (ctx.get(i).getType() == TokenType.NEWLINE || ctx.get(i).getType() == TokenType.F_SEMI) i++;
+//        while (i <= len) {
+//            seq.add(ctx.get(i));
+//            if (ctx.get(i).getType() == TokenType.NEWLINE || ctx.get(i).getType() == TokenType.F_SEMI) {
+//                int j = i;
+//                while (ctx.get(j).getType() == TokenType.NEWLINE || ctx.get(j).getType() == TokenType.F_SEMI) {
+//                    j++;
+//                }
+//                i = j;
+//            } else {
+//                i++;
+//            }
+//        }
+//        return seq;
+//    }
 
     // check token sequence
     public void validate(/* seq, TokenType... */) {
@@ -28,28 +75,28 @@ public class Parser {
     /**
      * Normal calculator!
      */
-    public static void main(String[] args) {
-        try {
-            List<Token> tokens =
-                    new Tokenizer().lex(Helper.readFile("/opt/jpro/Grammar/expr.lea")).stream()
-                            .filter(p ->
-                                    p.value() != TokenType.COMMENT &&
-    //                                        p.value() != TokenType.NEWLINE &&
-                                            p.value() != TokenType.WHITESPACE
-                            )
-                            .map(p -> Pair.build(p.value() == TokenType.V_STR
-                                    ? p.key().substring(1, p.key().length() - 1) : p.key(), p.value()))
-                            .map(p -> Token.build(p.value(), p.key())).toList();
-            tokens.forEach(token -> System.out.printf("%s ", token.getType()));
-            System.out.println();
-
-            MergeTree mergeTree = SimpleExpressionParser.composeTop(tokens, 0);
-            System.out.println(Helper.jsonTree(Helper.adjust(mergeTree.node), 0));
-            System.out.println("stop at : " + mergeTree.from);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-    }
+//    public static void main(String[] args) {
+//        try {
+//            List<Token> tokens =
+//                    new Tokenizer().lex(Helper.readFile("/opt/jpro/Grammar/expr.lea")).stream()
+//                            .filter(p ->
+//                                    p.value() != TokenType.COMMENT &&
+//    //                                        p.value() != TokenType.NEWLINE &&
+//                                            p.value() != TokenType.WHITESPACE
+//                            )
+//                            .map(p -> Pair.build(p.value() == TokenType.V_STR
+//                                    ? p.key().substring(1, p.key().length() - 1) : p.key(), p.value()))
+//                            .map(p -> Token.build(p.value(), p.key())).toList();
+//            tokens.forEach(token -> System.out.printf("%s ", token.getType()));
+//            System.out.println();
+//
+//            MergeTree mergeTree = SimpleExpressionParser.composeTop(tokens, 0);
+//            System.out.println(Helper.jsonTree(Helper.adjust(mergeTree.node), 0));
+//            System.out.println("stop at : " + mergeTree.from);
+//        } catch (Exception e) {
+//            System.out.println(e.getMessage());
+//        }
+//    }
 
 
     public static class SimpleExpressionParser {
