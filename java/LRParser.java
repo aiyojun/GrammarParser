@@ -7,6 +7,16 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * BNF Grammar
+ * expr ::= expr1 expr2 TERM1 expr3 expr4 TERM2
+ * How to find conflictions? reduce/shift?
+ * -> expr1 expr2 # 1. find head TERM of expr2, then check expr1 by recursing, attach 'opt' confliction TERM
+ * -> expr2 TERM1 #    same as the above!
+ * -> expr3 expr4 # 
+ * -> expr4 TERM2 # 
+ */
+
 public class LRParser {
     private int reduce(Matcher m) {
         return m.lookingAt() ? m.group(0).length() : 0;
