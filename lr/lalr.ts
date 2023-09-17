@@ -196,6 +196,9 @@ function items(G: Grammar, table: Map<string, string>) {
                     table.set(`action[${__i}, ${item.a}]`, `r${snOfProduction(G, item.prod.filter(s => s !== '·'))}`)
                 }
             }
+            if (itemSetContains(itemSet, {prod: [...G[0].slice(0, 2), '·'], a: '$'})) {
+                table.set(`action[${__i}, $]`, 'acc')
+            }
         }
     }
     return C
@@ -233,15 +236,21 @@ function printClosure(G: Grammar) {
     }
 }
 
-const G0 = [['G', 'S'], ['S', 'B', 'B'], ['B', 'b', 'B'], ['B', 'a']]
+function printProcess() {
+    const input = ['a', 'b', 'b', 'a', 'a', 'b']
 
-function print() {
+}
+
+const G0 = [['G', 'S'], ['S', 'B', 'B'], ['B', 'b', 'B'], ['B', 'a']]
+const G1 = [['S', 'E'], ['E', 'E', '+', 'T'], ['E', 'T'], ['T', 'T', '*', 'F'], ['T', 'F'], ['F', '(', 'E', ')'], ['F', 'id']]
+
+function print(G0) {
     printGrammar(G0)
     printClosure(G0)
     printItems(G0)
 }
 
-print()
+print(G1)
 
 
 
