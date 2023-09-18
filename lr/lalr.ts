@@ -24,12 +24,19 @@ function SetOf<T>(...args: T[]) {
 
 function isNTS(s: string) { return /[A-Z]/.test(s) }
 
+
+
+function isNonTerminal(s: string) {
+    return /[A-Z]/.test(s)
+}
+
 function strItem(item: Item) { return item.prod[0] + " -> " + item.prod.slice(1).join(' ') + " , " + item.a }
 
 function classify(grammar: Grammar, nts: Set<string>, ts: Set<string>) {
     for (let i = 0; i < grammar.length; i++) {
         const prod = grammar[i]
         nts.add(prod[0])
+        // console.info(typeof prod)
         prod.slice(1).forEach(s => {
             if (isNTS(s))
                 nts.add(s)
@@ -82,7 +89,7 @@ function subscript(C0: Family, C1: Family, I: ItemSet) {
 }
 
 function snOfProduction(G: Grammar, prod: Production) {
-    console.info("production sn : ", strProduction(prod))
+    // console.info("production sn : ", strProduction(prod))
     return G.map(x => strProduction(x)).indexOf(strProduction(prod))
 }
 
@@ -115,11 +122,16 @@ function FIRST(G: Grammar, beta: string, a: string) {
     const s: StrSet = new Set
     if (beta === '') {
         s.add(a)
+    // console.info("[0] FIRST SET of :", beta + a, s)
         return s
     }
     if (!isNTS(beta))
         s.add(beta)
-    return first(G, beta)
+    else
+        first(G, beta).forEach(x => s.add(x))
+    // const r = first(G, beta)
+    // console.info("[1] FIRST SET of :", beta + a, s)
+    return s
 }
 
 function closure(G: Grammar, I: ItemSet) {
@@ -158,6 +170,8 @@ function items(G: Grammar, table: Map<string, string>) {
     // terminals and non-terminals
     const NTS: Set<string> = new Set, TS: Set<string> = new Set;
     classify(G, NTS, TS)
+    console.info("terminals :", TS)
+    console.info("non-terminals :", NTS)
     // automata, LR(1) item set
     const C: Family = new Set
     C.add(closure(G, SetOf({prod: [G[0][0], '·', G[0][1]], a: '$'})))
@@ -170,6 +184,7 @@ function items(G: Grammar, table: Map<string, string>) {
             for (const X of GS) {
                 const J = goto(G, I, X)
                 if (J.size !== 0 && !familyContains(C, J) && !familyContains(Capp, J)) {
+                // console.info("-- goto from", I, " to", J)
                     Capp.add(J)
                 }
                 const __j = subscript(C, Capp, J)
@@ -236,32 +251,122 @@ function printClosure(G: Grammar) {
     }
 }
 
-function printProcess() {
-    const input = ['a', 'b', 'b', 'a', 'a', 'b']
 
+function printParsingTable(G) {
+    const nts: Set<string> = new Set, ts: Set<string> = new Set
+    classify(G, nts, ts);
+    const table: Map<string, string> = new Map;
+    const lr0automata = items(G, table)
+    let header = ' '
+    const arr_ts  = Array.from(ts)
+    const arr_nts = Array.from(nts)
+    arr_ts .forEach(s => header += "\t" + s)
+    arr_nts.forEach(s => header += "\t" + s)
+    console.info(header)
+    for (let i = 0; i < lr0automata.size; i++) {
+        let line = `${i}`
+        for (let j = 0; j < ts.size; j++) {
+            const action = `action[${i}, ${arr_ts[j]}]`
+            line += "\t"
+            if (table.has(action)) {
+                line += table.get(action)
+            } else {
+                line += " "
+            }
+        }
+        for (let j = 0; j < nts.size; j++) {
+            const goto = `goto[${i}, ${arr_nts[j]}]`
+            line += "\t"
+            if (table.has(goto)) {
+                line += table.get(goto)
+            } else {
+                line += " "
+            }
+        }
+        console.info(line)
+    }
 }
+
+interface StackItem {
+    i: number;
+    a: string;
+}
+
+
+
+function printProcess(G: Grammar, table: Map<string, string>, input: string[]) {
+    // const input = ['a', 'b', 'b', 'a', 'a', 'b']
+    const stack: StackItem[] = [{i: 0, a: '$'}]
+    const isShift = (cell) => /^s[1-9][0-9]*$/.test(cell)
+    const getShiftState = cell => parseInt(cell.substring(1))
+    const getReduceProduction = cell => G[(parseInt(cell.substring(1)))]
+    const isReduce = (cell) => /^r[1-9][0-9]*$/.test(cell)
+    let nextInputIndex = 0
+    const getNextInput = () => (nextInputIndex) < input.length ? input[nextInputIndex] : '$'
+    while (1) {
+        const a = getNextInput()
+        const top = stack[stack.length - 1]
+        const action = `action[${top.i}, ${a}]`
+        if (!table.has(action)) { console.error(`${action} not in table ${input.length} ${nextInputIndex}`); break; }
+        const decision = table.get(action)
+        if (decision === 'acc') { break; }
+        if (isShift(decision)) {
+            stack.push({i: getShiftState(decision), a})
+            ++nextInputIndex
+        } else if (isReduce(decision)) {
+            const prod = getReduceProduction(decision)
+            stack.splice(stack.length - prod.length + 1)
+            const __top = stack[stack.length - 1]
+            const goto = `goto[${__top.i}, ${prod[0]}]`
+            stack.push({i: parseInt(table.get(goto)), a: prod[0]})
+        }
+        console.info(stack)
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const G0 = [['G', 'S'], ['S', 'B', 'B'], ['B', 'b', 'B'], ['B', 'a']]
 const G1 = [['S', 'E'], ['E', 'E', '+', 'T'], ['E', 'T'], ['T', 'T', '*', 'F'], ['T', 'F'], ['F', '(', 'E', ')'], ['F', 'id']]
 
-function print(G0) {
-    printGrammar(G0)
-    printClosure(G0)
-    printItems(G0)
+function print(G) {
+
+
+
+    // console.info("First set of E :", first(G, 'E'))
+    // console.info("First set of E :", first(G, 'T'))
+    // console.info("First set of E :", first(G, 'F'))
+
+    // printGrammar(G)
+    // printClosure(G)
+    // printItems(G)
+    // printParsingTable(G)
+    const table: Map<string, string> = new Map;
+    items(G, table)
+    console.info("\n\n")
+    const inputstream = ['id', '+', 'id', '*', 'id', '+', 'id']
+    // const inputstream = ['a', 'b', 'a']
+    printProcess(G, table, inputstream)
 }
 
 print(G1)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
